@@ -144,6 +144,51 @@ object Settings extends Dependencies {
     )
   )
 
+  private val publishSettings = Seq(
+    homepage := Some(url("https://scalaland.io")),
+    licenses := Seq("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+    scmInfo := Some(
+      ScmInfo(url("https://github.com/scalalandio/catnip"), "scm:git:git@github.com:scalalandio/catnip.git")
+    ),
+    publishTo := {
+      val nexus = "https://oss.sonatype.org/"
+      if (isSnapshot.value)
+        Some("snapshots" at nexus + "content/repositories/snapshots")
+      else
+        Some("releases" at nexus + "service/local/staging/deploy/maven2")
+    },
+    publishMavenStyle := true,
+    publishArtifact in Test := false,
+    pomIncludeRepository := { _ =>
+      false
+    },
+    pomExtra :=
+      <developers>
+        <developer>
+          <id>krzemin</id>
+          <name>Piotr Krzemiński</name>
+          <url>https://github.com/krzemin</url>
+        </developer>
+        <developer>
+          <id>MateuszKubuszok</id>
+          <name>Mateusz Kubuszok</name>
+          <url>https://github.com/MateuszKubuszok</url>
+        </developer>
+      </developers>
+  )
+
+  private val noPublishSettings =
+    Seq(skip in publish := true, publishArtifact := false)
+
+  implicit class PublishConfigurator(project: Project) {
+
+    def publish: Project = project
+      .settings(publishSettings)
+
+    def noPublish: Project = project
+      .settings(noPublishSettings)
+  }
+
   sealed abstract class TestConfigurator(project: Project, config: Configuration) {
 
     protected def configure(requiresFork: Boolean): Project = project
