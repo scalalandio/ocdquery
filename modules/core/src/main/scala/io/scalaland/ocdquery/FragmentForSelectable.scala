@@ -1,17 +1,16 @@
 package io.scalaland.ocdquery
 
-import cats.implicits._
 import doobie._
 import doobie.implicits._
 import shapeless._
 
 trait FragmentForSelectable[V, C] {
-  def toFragment(value: V, columns: C): Option[Fragment]
+  def toFragment(value: V, columns: C): List[(ColumnName, Fragment)]
 }
 
 object FragmentForSelectable extends LowPriorityFragmentForUpdatableImplicit {
 
-  implicit val hnilCase: FragmentForSelectable[HNil, HNil] = (_: HNil, _: HNil) => None
+  implicit val hnilCase: FragmentForSelectable[HNil, HNil] = (_: HNil, _: HNil) => List.empty
 
   // gets selected elements
   implicit def hconsSelectableCase[H, VT <: HList, CT <: HList](
@@ -19,9 +18,10 @@ object FragmentForSelectable extends LowPriorityFragmentForUpdatableImplicit {
     tail:          FragmentForSelectable[VT, CT]
   ): FragmentForSelectable[Selectable[H] :: VT, String :: CT] =
     (v: Selectable[H] :: VT, c: String :: CT) =>
-      v.head.toOption.map { value =>
-        Fragment.const(s"${c.head} = ") ++ fr"$value"
-      } |+| tail.toFragment(v.tail, c.tail)
+      v.head.toOption match {
+        case Some(value) => (c.head -> fr"$value") :: tail.toFragment(v.tail, c.tail)
+        case None        => tail.toFragment(v.tail, c.tail)
+    }
 
   implicit def productCase[V, C, VRep <: HList, CRep <: HList](
     implicit entryGen: Generic.Aux[V, VRep],
@@ -37,5 +37,5 @@ trait LowPriorityFragmentForUpdatableImplicit {
   implicit def hconsObligatoryCase[H, VT <: HList, CT <: HList](
     implicit tail: FragmentForSelectable[VT, CT]
   ): FragmentForSelectable[H :: VT, String :: CT] =
-    (v: H :: VT, c: String :: CT) => none[Fragment] |+| tail.toFragment(v.tail, c.tail)
+    (v: H :: VT, c: String :: CT) => tail.toFragment(v.tail, c.tail)
 }

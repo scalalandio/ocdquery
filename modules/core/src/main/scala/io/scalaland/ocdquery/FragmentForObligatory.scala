@@ -1,17 +1,16 @@
 package io.scalaland.ocdquery
 
-import cats.implicits._
 import doobie._
 import doobie.implicits._
 import shapeless._
 
 trait FragmentForObligatory[V, C] {
-  def toFragment(value: V, columns: C): Option[Fragment]
+  def toFragment(value: V, columns: C): List[(ColumnName, Fragment)]
 }
 
 object FragmentForObligatory extends LowPriorityFragmentForObligatoryImplicit {
 
-  implicit val hnilCase: FragmentForObligatory[HNil, HNil] = (_: HNil, _: HNil) => None
+  implicit val hnilCase: FragmentForObligatory[HNil, HNil] = (_: HNil, _: HNil) => List.empty
 
   // skips selectable element
   implicit def hconsSelectableCase[H, VT <: HList, CT <: HList](
@@ -34,6 +33,5 @@ trait LowPriorityFragmentForObligatoryImplicit {
     implicit meta: Meta[H],
     tail:          FragmentForObligatory[VT, CT]
   ): FragmentForObligatory[H :: VT, String :: CT] =
-    (v: H :: VT, c: String :: CT) =>
-      Option(Fragment.const(s"${c.head} = ") ++ fr"${v.head}") |+| tail.toFragment(v.tail, c.tail)
+    (v: H :: VT, c: String :: CT) => (c.head -> fr"${v.head}") :: tail.toFragment(v.tail, c.tail)
 }
