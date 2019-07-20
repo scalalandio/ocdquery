@@ -8,28 +8,28 @@ import shapeless._
 import scala.annotation.implicitNotFound
 
 @implicitNotFound(
-  "Couldn't find/derive FragmentsForAll[$C, $V]\n" +
-    " - make sure that all fields are wrapped in obligatory or selectable F[_], " +
+  "Couldn't find/derive FragmentsForEntity[${V}, ${C}]\n" +
+    " - make sure that all fields are wrapped in F[_], " +
     "and make sure doobie.Meta instances are available for all fields"
 )
-trait FragmentsForAll[V, C] {
+trait FragmentsForEntity[V, C] {
   def toFragments(value: V, columns: C): List[(ColumnName, Fragment)]
 }
 
-object FragmentsForAll {
+object FragmentsForEntity {
 
-  implicit val hnilCase: FragmentsForAll[HNil, HNil] = (_: HNil, _: HNil) => List.empty
+  implicit val hnilCase: FragmentsForEntity[HNil, HNil] = (_: HNil, _: HNil) => List.empty
 
   implicit def hconsCase[H, VT <: HList, CT <: HList](
     implicit meta: Meta[H],
-    tail:          FragmentsForAll[VT, CT]
-  ): FragmentsForAll[H :: VT, String :: CT] =
+    tail:          FragmentsForEntity[VT, CT]
+  ): FragmentsForEntity[H :: VT, String :: CT] =
     (v: H :: VT, c: String :: CT) => (c.head -> fr"${v.head}") :: tail.toFragments(v.tail, c.tail)
 
   implicit def productCase[V, C, VRep <: HList, CRep <: HList](
     implicit entryGen: Generic.Aux[V, VRep],
     columnsGen:        Generic.Aux[C, CRep],
-    repCase:           FragmentsForAll[VRep, CRep]
-  ): FragmentsForAll[V, C] =
+    repCase:           FragmentsForEntity[VRep, CRep]
+  ): FragmentsForEntity[V, C] =
     (value: V, columns: C) => repCase.toFragments(entryGen.to(value), columnsGen.to(columns))
 }

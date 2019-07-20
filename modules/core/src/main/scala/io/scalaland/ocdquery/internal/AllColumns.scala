@@ -6,9 +6,9 @@ import shapeless._
 import scala.annotation.implicitNotFound
 
 @implicitNotFound(
-  "Couldn't find/derive AllColumns[$C]\n" +
+  "Couldn't find/derive AllColumns[${C}]\n" +
     " - make sure that all fields are wrapped in obligatory or selectable F[_], " +
-    "so that ColumnsOf[EntityF] is made of Strings only"
+    "so that ${C} is made of Strings only"
 )
 trait AllColumns[C] {
   def getList(c: C): List[ColumnName]

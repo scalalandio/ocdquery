@@ -3,50 +3,51 @@ package io.scalaland.ocdquery
 import doobie._
 import doobie.implicits._
 
+// scalastyle:off
 @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
-class Repo[EntityF[_[_], _[_]]](val meta: RepoMeta[EntityF])(implicit read: Read[EntityOf[EntityF]]) {
+class Repo[C, E, S](val meta: RepoMeta[C, E, S])(implicit read: Read[E]) {
 
   import meta._
 
-  def insert(entity: EntityOf[EntityF]): Update0 = {
-    val fragments = fragmentForAll(entity)
+  def insert(create: C): Update0 = {
+    val fragments = fragmentsForCreate(create)
     val columns   = fragments.keys.mkString(", ")
     val values    = fragments.values.reduce(_ ++ fr", " ++ _)
 
     (Fragment.const(s"INSERT INTO $tableName ($columns) VALUES (") ++ values ++ fr")").update
   }
 
-  def fetch(select: SelectOf[EntityF]): Query0[EntityOf[EntityF]] = {
-    val columns = columnsNames.mkString(", ")
-    val where = (fragmentForObligatory(select) ++ fragmentForSelectable(select))
+  def fetch(select: S): Query0[E] = {
+    val columns = columnNames.mkString(", ")
+    val where = fragmentsForSelect(select)
       .map {
         case (column, value) =>
           Fragment.const(s"$column = ") ++ value
       }
       .reduce(_ ++ fr" AND " ++ _)
 
-    (Fragment.const(s"""SELECT $columns FROM $tableName WHERE """) ++ where).query[EntityOf[EntityF]]
+    (Fragment.const(s"""SELECT $columns FROM $tableName WHERE """) ++ where).query[E]
   }
 
-  def update(select: SelectOf[EntityF]): Update0 = {
-    val update = fragmentForSelectable(select)
+  def update(select: S, update: S): Update0 = {
+    val set = fragmentsForSelect(update)
       .map {
         case (column, value) =>
           Fragment.const(s"$column = ") ++ value
       }
       .reduce(_ ++ fr", " ++ _)
-    val where = fragmentForObligatory(select)
+    val where = fragmentsForSelect(select)
       .map {
         case (column, value) =>
           Fragment.const(s"$column = ") ++ value
       }
       .reduce(_ ++ fr" AND " ++ _)
 
-    (Fragment.const(s"UPDATE $tableName SET ") ++ update ++ fr" WHERE " ++ where).update
+    (Fragment.const(s"UPDATE $tableName SET ") ++ set ++ fr" WHERE " ++ where).update
   }
 
-  def delete(select: SelectOf[EntityF]): Update0 = {
-    val where = (fragmentForObligatory(select) ++ fragmentForSelectable(select))
+  def delete(select: S): Update0 = {
+    val where = fragmentsForSelect(select)
       .map {
         case (column, value) =>
           Fragment.const(s"$column = ") ++ value

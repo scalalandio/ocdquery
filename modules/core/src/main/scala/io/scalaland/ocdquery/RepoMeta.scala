@@ -1,38 +1,67 @@
 package io.scalaland.ocdquery
 
-import doobie._
-import io.scalaland.ocdquery.internal.{ AllColumns, FragmentsForAll, FragmentsForObligatory, FragmentsForSelectable }
+import cats.Id
+import doobie.Fragment
+import io.scalaland.ocdquery.internal._
 
 import scala.collection.immutable.{ ListMap, ListSet }
 
-trait RepoMeta[EntityF[_[_], _[_]]] {
+trait RepoMeta[Create, Entity, Select] {
 
-  val tableName:             String
-  val columnsNames:          ListSet[String]
-  val fragmentForAll:        EntityOf[EntityF] => ListMap[String, Fragment]
-  val fragmentForSelectable: SelectOf[EntityF] => ListMap[String, Fragment]
-  val fragmentForObligatory: SelectOf[EntityF] => ListMap[String, Fragment]
+  val tableName:   TableName
+  val columnNames: ListSet[ColumnName]
+
+  val fragmentsForCreate: Create => ListMap[ColumnName, Fragment]
+  val fragmentsForEntity: Entity => ListMap[ColumnName, Fragment]
+  val fragmentsForSelect: Select => ListMap[ColumnName, Fragment]
 }
 
 object RepoMeta {
 
-  def instanceFor[EntityF[_[_], _[_]]](
-    table:   String,
-    columns: ColumnsOf[EntityF]
+  def instant[Create, Entity, Select, Columns](
+    table:   TableName,
+    columns: Columns
   )(
-    implicit cols: AllColumns[ColumnsOf[EntityF]],
-    forAll:        FragmentsForAll[EntityOf[EntityF], ColumnsOf[EntityF]],
-    forSelectable: FragmentsForSelectable[SelectOf[EntityF], ColumnsOf[EntityF]],
-    forObligatory: FragmentsForObligatory[SelectOf[EntityF], ColumnsOf[EntityF]]
-  ): RepoMeta[EntityF] =
-    new RepoMeta[EntityF] {
-      val tableName:    String          = table
-      val columnsNames: ListSet[String] = ListSet(cols.getList(columns).toSeq: _*)
-      val fragmentForAll: EntityOf[EntityF] => ListMap[String, Fragment] = entry =>
-        ListMap(forAll.toFragments(entry, columns).toSeq: _*)
-      val fragmentForSelectable: SelectOf[EntityF] => ListMap[String, Fragment] = fixed =>
-        ListMap(forSelectable.toFragments(fixed, columns).toSeq: _*)
-      val fragmentForObligatory: SelectOf[EntityF] => ListMap[String, Fragment] = fixed =>
-        ListMap(forObligatory.toFragments(fixed, columns).toSeq: _*)
+    implicit cols: AllColumns[Columns],
+    forCreate:     FragmentsForCreate[Create, Columns],
+    forEntity:     FragmentsForEntity[Entity, Columns],
+    forSelect:     FragmentsForSelect[Select, Columns]
+  ): RepoMeta[Create, Entity, Select] =
+    new RepoMeta[Create, Entity, Select] {
+
+      val tableName:   TableName           = table
+      val columnNames: ListSet[ColumnName] = ListSet(cols.getList(columns).toSeq: _*)
+
+      val fragmentsForCreate: Create => ListMap[ColumnName, Fragment] = created =>
+        ListMap(forCreate.toFragments(created, columns).toSeq: _*)
+      val fragmentsForEntity: Entity => ListMap[ColumnName, Fragment] = entity =>
+        ListMap(forEntity.toFragments(entity, columns).toSeq: _*)
+      val fragmentsForSelect: Select => ListMap[ColumnName, Fragment] = select =>
+        ListMap(forSelect.toFragments(select, columns).toSeq: _*)
     }
+
+  def forValue[ValueF[_[_]]](
+    tableName: TableName,
+    columns:   ValueF[ColumnNameF]
+  )(
+    implicit cols: AllColumns[ValueF[ColumnNameF]],
+    forCreate:     FragmentsForCreate[ValueF[Id], ValueF[ColumnNameF]],
+    forEntity:     FragmentsForEntity[ValueF[Id], ValueF[ColumnNameF]],
+    forSelect:     FragmentsForSelect[ValueF[Selectable], ValueF[ColumnNameF]]
+  ): RepoMeta[ValueF[Id], ValueF[Id], ValueF[Selectable]] =
+    instant[ValueF[Id], ValueF[Id], ValueF[Selectable], ValueF[ColumnNameF]](tableName, columns)
+
+  def forEntity[EntityF[_[_], _[_]]](
+    tableName: TableName,
+    columns:   EntityF[ColumnNameF, ColumnNameF]
+  )(
+    implicit cols: AllColumns[EntityF[ColumnNameF, ColumnNameF]],
+    forCreate:     FragmentsForCreate[EntityF[Id, UnitF], EntityF[ColumnNameF, ColumnNameF]],
+    forEntity:     FragmentsForEntity[EntityF[Id, Id], EntityF[ColumnNameF, ColumnNameF]],
+    forSelect:     FragmentsForSelect[EntityF[Selectable, Selectable], EntityF[ColumnNameF, ColumnNameF]]
+  ): RepoMeta[EntityF[Id, UnitF], EntityF[Id, Id], EntityF[Selectable, Selectable]] =
+    instant[EntityF[Id, UnitF], EntityF[Id, Id], EntityF[Selectable, Selectable], EntityF[ColumnNameF, ColumnNameF]](
+      tableName,
+      columns
+    )
 }

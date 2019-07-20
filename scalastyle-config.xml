@@ -94,6 +94,6 @@
  <check level="error" class="org.scalastyle.scalariform.SimplifyBooleanExpressionChecker" enabled="true"/>
  <check level="error" class="org.scalastyle.scalariform.SpacesAfterPlusChecker" enabled="true"/>
  <check level="error" class="org.scalastyle.scalariform.SpacesBeforePlusChecker" enabled="true"/>
- <check level="error" class="org.scalastyle.scalariform.StructuralTypeChecker" enabled="true"/>
+ <check level="error" class="org.scalastyle.scalariform.StructuralTypeChecker" enabled="false"/>
  <check level="error" class="org.scalastyle.scalariform.UppercaseLChecker" enabled="true"/>
 </scalastyle>
