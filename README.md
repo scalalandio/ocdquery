@@ -1,7 +1,7 @@
 # Over-Complicated Database Query (OCD Query)
 
 [![Build Status](https://travis-ci.org/scalalandio/ocdquery.svg?branch=master)](https://travis-ci.org/scalalandio/ocdquery)
-[![Maven Central](https://img.shields.io/maven-central/v/io.scalaland/ocdquery_2.12.svg)](http://search.maven.org/#search%7Cga%7C1%7Cocdquery)
+[![Maven Central](https://img.shields.io/maven-central/v/io.scalaland/ocdquery-core_2.12.svg)](http://search.maven.org/#search%7Cga%7C1%7Cocdquery)
 [![License](http://img.shields.io/:license-Apache%202-green.svg)](http://www.apache.org/licenses/LICENSE-2.0.txt)
 
 Doobie queries generated using higher-kinded data.
