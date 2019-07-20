@@ -147,7 +147,7 @@ final case class TicketF[O[_], S[_]](
   date:    S[LocalDate]
 )
 
-type Ticker = TicketF[Id, Id]
+type Ticket = TicketF[Id, Id]
 type TicketFilter = TicketF[Id, Option]
 type TicketColumns = TicketF[ColumnNameF, ColumnNameF]
 ```
