@@ -3,6 +3,7 @@ package io.scalaland.ocdquery
 import java.time.LocalDate
 
 import cats.Id
+import cats.implicits._
 import doobie._
 import doobie.implicits._
 import io.scalaland.ocdquery.example.{ TicketF, TicketRepo }
@@ -96,6 +97,44 @@ final class RepoSpec extends Specification with WithH2Database {
       } yield deletedTicket
 
       test.transact(transactor).unsafeRunSync() === None
+    }
+
+    "generate valid pagination" in {
+      val now = LocalDate.now()
+
+      val names = List("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k")
+
+      val toCreate = names.map { name =>
+        TicketF[Id, UnitF](
+          id      = (),
+          name    = name,
+          surname = "Test",
+          from    = "Test",
+          to      = "Test",
+          date    = now
+        )
+      }
+
+      val filter = TicketF[Selectable, Selectable](
+        id      = Skipped,
+        name    = Skipped,
+        surname = Fixed("Test"),
+        from    = Fixed("Test"),
+        to      = Fixed("Test"),
+        date    = Skipped
+      )
+
+      val test = for {
+        inserted <- toCreate.traverse(TicketRepo.insert(_).run).map(_.sum)
+        _ = inserted === toCreate.length
+        all <- TicketRepo.fetch(filter).to[List]
+        _ = all.map(_.name).toSet === names.toSet
+        firstHalf <- TicketRepo.fetch(filter, Some("name" -> Repo.Sort.Ascending), None, Some(5)).to[List]
+        _ = firstHalf.map(_.name) === names.take(5)
+        secondHalf <- TicketRepo.fetch(filter, Some("name" -> Repo.Sort.Ascending), Some(5), None).to[List]
+      } yield secondHalf.map(_.name)
+
+      test.transact(transactor).unsafeRunSync() === names.drop(5)
     }
   }
 }
