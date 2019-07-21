@@ -60,7 +60,7 @@ and maybe some optional parts (having other field equal to some value):
 ```scala
 final case class TicketFilter(
   id:      Option[UUID],     // where id      = [this value if set]
-  name:    Option[String],   // an    name    = [this value if set]
+  name:    Option[String],   // and   name    = [this value if set]
   surname: Option[String],   // and   surname = [this value if set]
   from:    Option[String],   // and   from    = [this value if set]
   to:      Option[String],   // and   to      = [this value if set]
@@ -78,8 +78,8 @@ You might want to update existing entity using case class - this you make buildi
 
 ```scala
 final case class TicketUpdate(
-  id:      Unit,             // ignore as immutable
-  name:    Option[String],   // set name    = [this value if set],
+  id:      Option[Unit],     // set uuid    = [this value if set],
+  name:    Option[String],   //     name    = [this value if set],
   surname: Option[String],   //     surname = [this value if set],
   from:    Option[String],   //     from    = [this value if set],
   to:      Option[String],   //     to      = [this value if set],
