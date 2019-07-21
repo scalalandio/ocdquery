@@ -8,19 +8,21 @@ import scala.collection.immutable.{ ListMap, ListSet }
 
 trait RepoMeta[Create, Entity, Select] {
 
-  val tableName:   TableName
+  val table:       Fragment
   val columnNames: ListSet[ColumnName]
 
-  val fragmentsForCreate: Create => ListMap[ColumnName, Fragment]
-  val fragmentsForEntity: Entity => ListMap[ColumnName, Fragment]
-  val fragmentsForSelect: Select => ListMap[ColumnName, Fragment]
+  val fromCreate: Create => ListMap[ColumnName, Fragment]
+  val fromEntity: Entity => ListMap[ColumnName, Fragment]
+  val fromSelect: Select => ListMap[ColumnName, Fragment]
+
+  lazy val * : Fragment = Fragment.const(columnNames.mkString(", "))
 }
 
 object RepoMeta {
 
   def instant[Create, Entity, Select, Columns](
-    table:   TableName,
-    columns: Columns
+    tableName: TableName,
+    columns:   Columns
   )(
     implicit cols: AllColumns[Columns],
     forCreate:     FragmentsForCreate[Create, Columns],
@@ -29,14 +31,14 @@ object RepoMeta {
   ): RepoMeta[Create, Entity, Select] =
     new RepoMeta[Create, Entity, Select] {
 
-      val tableName:   TableName           = table
+      val table:       Fragment            = Fragment.const(tableName)
       val columnNames: ListSet[ColumnName] = ListSet(cols.getList(columns).toSeq: _*)
 
-      val fragmentsForCreate: Create => ListMap[ColumnName, Fragment] = created =>
+      val fromCreate: Create => ListMap[ColumnName, Fragment] = created =>
         ListMap(forCreate.toFragments(created, columns).toSeq: _*)
-      val fragmentsForEntity: Entity => ListMap[ColumnName, Fragment] = entity =>
+      val fromEntity: Entity => ListMap[ColumnName, Fragment] = entity =>
         ListMap(forEntity.toFragments(entity, columns).toSeq: _*)
-      val fragmentsForSelect: Select => ListMap[ColumnName, Fragment] = select =>
+      val fromSelect: Select => ListMap[ColumnName, Fragment] = select =>
         ListMap(forSelect.toFragments(select, columns).toSeq: _*)
     }
 
