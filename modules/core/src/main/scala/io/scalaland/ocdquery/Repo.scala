@@ -5,10 +5,6 @@ import doobie.implicits._
 
 class Repo[C, E: Read, S](val meta: RepoMeta[C, E, S]) {
 
-  type Create = C
-  type Entity = E
-  type Select = S
-
   import meta._
 
   def insert(create: Create): Update0 = {

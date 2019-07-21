@@ -5,13 +5,13 @@ import io.scalaland.ocdquery._
 
 object TicketRepo
     extends Repo(
-      RepoMeta.forEntity[TicketF]("tickets",
-                                  TicketF[ColumnNameF, ColumnNameF](
-                                    id      = "id",
-                                    name    = "name",
-                                    surname = "surname",
-                                    from    = "from_",
-                                    to      = "to",
-                                    date    = "date"
-                                  ))
+      RepoMeta.forEntity("tickets",
+                         TicketF[ColumnNameF, ColumnNameF](
+                           id      = "id",
+                           name    = "name",
+                           surname = "surname",
+                           from    = "from_",
+                           to      = "to",
+                           date    = "date"
+                         ))
     )

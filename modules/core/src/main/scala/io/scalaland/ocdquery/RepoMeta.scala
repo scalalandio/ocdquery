@@ -6,7 +6,10 @@ import io.scalaland.ocdquery.internal._
 
 import scala.collection.immutable.{ ListMap, ListSet }
 
-trait RepoMeta[Create, Entity, Select] {
+trait RepoMeta[C, E, S] {
+  type Create = C
+  type Entity = E
+  type Select = S
 
   val table:       Fragment
   val columnNames: ListSet[ColumnName]
