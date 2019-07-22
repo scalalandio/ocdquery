@@ -236,8 +236,8 @@ final case class TicketF[F[_], C[_]](
   date:    F[LocalDate]
 )
 
-type TickerCreate  = TicketF[Id, UnitF] // C[_] fields are Units, the rest as of type inside of F[_]
-type Ticker        = TicketF[Id, Id] // all fields are of the type inside of F[_]/C[_]
+type TicketCreate  = TicketF[Id, UnitF] // C[_] fields are Units, the rest as of type inside of F[_]
+type Ticket        = TicketF[Id, Id] // all fields are of the type inside of F[_]/C[_]
 type TicketFilter  = TicketF[Option, Option] // all fields are of Option of inside of F[_]/C[_]
 type TicketColumns = TicketF[ColumnNameF, ColumnNameF] // all fields are Strings
 ```
