@@ -41,13 +41,9 @@ final class RepoSpec extends Specification with WithH2Database {
         _ = inserted === 1
 
         // should fetch complete entity
-        byName = TicketF[Selectable, Selectable](
-          id      = Skipped,
-          name    = Fixed(createTicket.name),
-          surname = Fixed(createTicket.surname),
-          from    = Skipped,
-          to      = Skipped,
-          date    = Skipped
+        byName = TicketRepo.emptySelect.copy[Selectable, Selectable](
+          name    = createTicket.name,
+          surname = createTicket.surname
         )
         fetchedTicket <- TicketRepo.fetch(byName, limitOpt = Some(1)).unique
         expectedTicket = TicketF[Id, Id](
@@ -61,13 +57,8 @@ final class RepoSpec extends Specification with WithH2Database {
         _ = fetchedTicket === expectedTicket
 
         // should update all fields but id
-        byId = TicketF[Selectable, Selectable](
-          id      = Fixed(fetchedTicket.id),
-          name    = Skipped,
-          surname = Skipped,
-          from    = Skipped,
-          to      = Skipped,
-          date    = Skipped
+        byId = TicketRepo.emptySelect.copy[Selectable, Selectable](
+          id = fetchedTicket.id
         )
         expectedUpdated = TicketF[Id, Id](
           id      = fetchedTicket.id,
@@ -77,13 +68,12 @@ final class RepoSpec extends Specification with WithH2Database {
           to      = "New York",
           date    = LocalDate.now().plusDays(5) // scalastyle:ignore
         )
-        update = TicketF[Selectable, Selectable](
-          id      = Skipped,
-          name    = Fixed(expectedUpdated.name),
-          surname = Fixed(expectedUpdated.surname),
-          from    = Fixed(expectedUpdated.from),
-          to      = Fixed(expectedUpdated.to),
-          date    = Fixed(expectedUpdated.date)
+        update = TicketRepo.emptySelect.copy[Selectable, Selectable](
+          name    = expectedUpdated.name,
+          surname = expectedUpdated.surname,
+          from    = expectedUpdated.from,
+          to      = expectedUpdated.to,
+          date    = expectedUpdated.date
         )
         updated <- TicketRepo.update(byId, update).run
         _ = updated === 1
@@ -115,13 +105,10 @@ final class RepoSpec extends Specification with WithH2Database {
         )
       }
 
-      val filter = TicketF[Selectable, Selectable](
-        id      = Skipped,
-        name    = Skipped,
-        surname = Fixed("Test"),
-        from    = Fixed("Test"),
-        to      = Fixed("Test"),
-        date    = Skipped
+      val filter = TicketRepo.emptySelect.copy[Selectable, Selectable](
+        surname = "Test",
+        from    = "Test",
+        to      = "Test"
       )
 
       val test = for {
