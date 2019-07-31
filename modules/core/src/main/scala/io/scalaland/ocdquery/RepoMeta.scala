@@ -25,34 +25,37 @@ sealed trait RepoMeta[C, E, S, N] {
   lazy val * : Fragment = Fragment.const(columnNames.mkString(", "))
 }
 
-sealed trait UnnamedRepoMeta[C, E, S, N] extends RepoMeta[C, E, S, N] { repo =>
+sealed trait UnnamedRepoMeta[C, E, S, N] extends RepoMeta[C, E, S, N] { meta =>
 
   def as(name: String): NamedRepoMeta[C, E, S, N] =
     new NamedRepoMeta[C, E, S, N] {
 
-      val table:       Fragment            = repo.table ++ Fragment.const(s" AS $name")
-      val columnNames: ListSet[ColumnName] = repo.columnNames.map(name + "." + _)
+      val table:       Fragment            = meta.table ++ Fragment.const(s" AS $name")
+      val columnNames: ListSet[ColumnName] = meta.columnNames.map(name + "." + _)
 
       val fromCreate: Create => ListMap[ColumnName, Fragment] =
-        c => repo.fromCreate(c).map { case (k, v) => (name + "." + k) -> v }
+        c => meta.fromCreate(c).map { case (k, v) => (name + "." + k) -> v }
       val fromEntity: Entity => ListMap[ColumnName, Fragment] =
-        e => repo.fromEntity(e).map { case (k, v) => (name + "." + k) -> v }
+        e => meta.fromEntity(e).map { case (k, v) => (name + "." + k) -> v }
       val fromSelect: Select => ListMap[ColumnName, Fragment] =
-        s => repo.fromSelect(s).map { case (k, v) => (name + "." + k) -> v }
+        s => meta.fromSelect(s).map { case (k, v) => (name + "." + k) -> v }
 
-      def forNames[F[_]: Functor](f: Names => F[ColumnName]): F[ColumnName] = repo.forNames(f).map(name + "." + _)
+      def forNames[F[_]: Functor](f: Names => F[ColumnName]): F[ColumnName] =
+        meta.forNames(f).map { cols =>
+          if (cols.contains('.')) cols else name + "." + cols
+        }
 
       val joinedOn: Option[Fragment] = None
     }
 }
 
-sealed trait NamedRepoMeta[C, E, S, N] extends RepoMeta[C, E, S, N] { repo1 =>
+sealed trait NamedRepoMeta[C, E, S, N] extends RepoMeta[C, E, S, N] { meta0 =>
 
   val joinedOn: Option[Fragment]
 
   def join[C1, E1, S1, N1, C0, E0, S0, N0](
-    repo2: NamedRepoMeta[C1, E1, S1, N1],
-    on:    (N => ColumnName, N1 => ColumnName)*
+    meta: NamedRepoMeta[C1, E1, S1, N1],
+    on:   (N => ColumnName, N1 => ColumnName)*
   )(implicit
     cta: TupleAppender[C, C1, C0],
     eta: TupleAppender[E, E1, E0],
@@ -61,21 +64,21 @@ sealed trait NamedRepoMeta[C, E, S, N] extends RepoMeta[C, E, S, N] { repo1 =>
     new NamedRepoMeta[C0, E0, S0, N0] {
 
       // TODO: for now only "join"
-      val table:       Fragment            = repo1.table ++ Fragment.const(" JOIN ") ++ repo2.table
-      val columnNames: ListSet[ColumnName] = repo1.columnNames ++ repo1.columnNames
+      val table:       Fragment            = meta0.table ++ Fragment.const("JOIN") ++ meta.table
+      val columnNames: ListSet[ColumnName] = meta0.columnNames ++ meta.columnNames
 
       val fromCreate: C0 => ListMap[ColumnName, Fragment] = (cta.revert _) andThen {
-        case (c, c1) => repo1.fromCreate(c) ++ repo2.fromCreate(c1)
+        case (c, c1) => meta0.fromCreate(c) ++ meta.fromCreate(c1)
       }
       val fromEntity: E0 => ListMap[ColumnName, Fragment] = (eta.revert _) andThen {
-        case (e, e1) => repo1.fromEntity(e) ++ repo2.fromEntity(e1)
+        case (e, e1) => meta0.fromEntity(e) ++ meta.fromEntity(e1)
       }
       val fromSelect: S0 => ListMap[ColumnName, Fragment] = (sta.revert _) andThen {
-        case (s, s1) => repo1.fromSelect(s) ++ repo2.fromSelect(s1)
+        case (s, s1) => meta0.fromSelect(s) ++ meta.fromSelect(s1)
       }
 
-      def forNames[F[_]: Functor](f: Names => F[ColumnName]): F[ColumnName] = repo1.forNames { n =>
-        repo2.forNames { n1 =>
+      override def forNames[F[_]: Functor](f: Names => F[ColumnName]): F[ColumnName] = meta0.forNames { n =>
+        meta.forNames { n1 =>
           f(nta.append(n, n1))
         }
       }
@@ -83,7 +86,7 @@ sealed trait NamedRepoMeta[C, E, S, N] extends RepoMeta[C, E, S, N] { repo1 =>
       val joinedOn: Option[Fragment] = on
         .map {
           case (nf, n1f) =>
-            Fragment.const(repo1.forNames[Id](nf) + " = " + repo2.forNames[Id](n1f))
+            Fragment.const(meta0.forNames[Id](nf) + " = " + meta.forNames[Id](n1f))
         }
         .reduceOption(_ ++ Fragment.const("AND") ++ _)
     }

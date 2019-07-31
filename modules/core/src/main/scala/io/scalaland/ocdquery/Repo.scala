@@ -28,7 +28,8 @@ class Repo[C, E: Read, S, N](val meta: UnnamedRepoMeta[C, E, S, N]) { repo =>
     }
     val offset = offsetOpt.map(offset => Fragment.const(s"OFFSET $offset")).getOrElse(Fragment.empty)
     val limit  = limitOpt.map(offset => Fragment.const(s"LIMIT $offset")).getOrElse(Fragment.empty)
-    (fr"SELECT " ++ * ++ fr"FROM" ++ table ++ fr"WHERE" ++ fromSelect(select).asAnd ++ orderBy ++ offset ++ limit)
+
+    (fr"SELECT" ++ * ++ fr"FROM" ++ table ++ fr"WHERE" ++ fromSelect(select).asAnd ++ orderBy ++ offset ++ limit)
       .query[Entity]
   }
 

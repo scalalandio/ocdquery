@@ -62,7 +62,20 @@ class FetcherSpec extends Specification with WithH2Database {
         result2 <- join2.fetch((byName, byName, byName)).to[List]
       } yield result1 -> result2
 
-      test.transact(transactor).unsafeRunSync() === None
+      val (result1: List[Double[Entity]], result2: List[Triple[Entity]]) = test.transact(transactor).unsafeRunSync()
+
+      result1.foreach {
+        case (e1, e2) =>
+          e1 === e2
+      }
+      result1 must not(empty)
+
+      result2.foreach {
+        case (e1, e2, e3) =>
+          e1 === e2
+          e2 === e3
+      }
+      result2 must not(empty)
     }
   }
 }

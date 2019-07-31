@@ -25,7 +25,7 @@ class Fetcher[C, E: Read, S, N](val meta: NamedRepoMeta[C, E, S, N]) {
     val where  = fr"WHERE" ++ fromSelect(select).asAnd
     val offset = offsetOpt.map(offset => Fragment.const(s"OFFSET $offset")).getOrElse(Fragment.empty)
     val limit  = limitOpt.map(offset => Fragment.const(s"OFFSET $offset")).getOrElse(Fragment.empty)
-    (fr"SELECT " ++ * ++ fr"FROM" ++ table ++ joinOn ++ where ++ orderBy ++ offset ++ limit).query[Entity]
+    (fr"SELECT" ++ * ++ fr"FROM" ++ table ++ joinOn ++ where ++ orderBy ++ offset ++ limit).query[Entity]
   }
 
   def join[C1, E1, S1, N1, C0, E0, S0, N0](repo2: Repo[C1, E1, S1, N1], on: (N => ColumnName, N1 => ColumnName)*)(
