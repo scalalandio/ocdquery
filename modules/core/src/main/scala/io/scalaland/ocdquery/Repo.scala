@@ -3,9 +3,11 @@ package io.scalaland.ocdquery
 import doobie._
 import doobie.implicits._
 
-class Repo[C, E: Read, S](val meta: RepoMeta[C, E, S]) {
+class Repo[C, E: Read, S, N](val meta: RepoMeta[C, E, S, N]) {
 
   import meta._
+
+  // TODO: add handling for joins
 
   def insert(create: Create): Update0 = {
     val fragments = fromCreate(create)
@@ -35,6 +37,8 @@ class Repo[C, E: Read, S](val meta: RepoMeta[C, E, S]) {
 }
 
 object Repo {
+
+  def apply[C, E: Read, S, N](meta: RepoMeta[C, E, S, N]): Repo[C, E, S, N] = new Repo(meta)
 
   sealed trait Sort extends Product with Serializable
   object Sort {
