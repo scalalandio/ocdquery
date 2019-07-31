@@ -28,4 +28,6 @@ package object ocdquery {
     def asValues: Fragment =
       fragments.valuesIterator.reduce(_ ++ fr"," ++ _)
   }
+
+  implicit def liftToSelectable[A](a: A): Selectable[A] = Option(a).map(Fixed(_)).getOrElse(Skipped)
 }

@@ -4,9 +4,9 @@ import cats.Id
 import cats.implicits._
 import doobie._
 import doobie.implicits._
-import io.scalaland.ocdquery.internal.RandomName
+import io.scalaland.ocdquery.internal.{ Empty, RandomName }
 
-class Repo[C, E: Read, S, N](val meta: UnnamedRepoMeta[C, E, S, N]) { repo =>
+class Repo[C, E: Read, S: Empty, N](val meta: UnnamedRepoMeta[C, E, S, N]) { repo =>
 
   import meta._
 
@@ -46,11 +46,13 @@ class Repo[C, E: Read, S, N](val meta: UnnamedRepoMeta[C, E, S, N]) { repo =>
     implicit val readEE1: Read[(E, E1)] = (read, repo2.read).mapN((e, e1) => e -> e1)
     new Fetcher(repo.meta.as(RandomName.next).join(repo2.meta.as(RandomName.next), on.toSeq: _*))
   }
+
+  lazy val emptySelect: Select = Empty[Select].value
 }
 
 object Repo {
 
-  def apply[C, E: Read, S, N](meta: UnnamedRepoMeta[C, E, S, N]): Repo[C, E, S, N] = new Repo(meta)
+  def apply[C, E: Read, S: Empty, N](meta: UnnamedRepoMeta[C, E, S, N]): Repo[C, E, S, N] = new Repo(meta)
 
   sealed trait Sort extends Product with Serializable
   object Sort {

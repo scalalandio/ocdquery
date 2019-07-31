@@ -50,13 +50,9 @@ class FetcherSpec extends Specification with WithH2Database {
         _ = inserted === 1
 
         // should fetch duplicated entity
-        byName = TicketF[Selectable, Selectable](
-          id      = Skipped,
-          name    = Fixed(createTicket.name),
-          surname = Fixed(createTicket.surname),
-          from    = Skipped,
-          to      = Skipped,
-          date    = Skipped
+        byName = TicketRepo.emptySelect.copy[Selectable, Selectable](
+          name    = createTicket.name,
+          surname = createTicket.surname
         )
         result1 <- join1.fetch((byName, byName)).to[List]
         result2 <- join2.fetch((byName, byName, byName)).to[List]
