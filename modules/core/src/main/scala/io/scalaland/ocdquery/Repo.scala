@@ -4,7 +4,14 @@ import cats.Id
 import cats.implicits._
 import doobie._
 import doobie.implicits._
-import io.scalaland.ocdquery.internal.{ Empty, RandomName }
+import io.scalaland.ocdquery.internal.{
+  AllColumns,
+  Empty,
+  FragmentsForCreate,
+  FragmentsForEntity,
+  FragmentsForSelect,
+  RandomName
+}
 
 class Repo[C, E: Read, S: Empty, N](val meta: UnnamedRepoMeta[C, E, S, N]) { repo =>
 
@@ -53,6 +60,32 @@ class Repo[C, E: Read, S: Empty, N](val meta: UnnamedRepoMeta[C, E, S, N]) { rep
 object Repo {
 
   def apply[C, E: Read, S: Empty, N](meta: UnnamedRepoMeta[C, E, S, N]): Repo[C, E, S, N] = new Repo(meta)
+
+  def forValue[ValueF[_[_]]](
+    tableName: TableName,
+    columns:   ValueF[ColumnNameF]
+  )(
+    implicit cols: AllColumns[ValueF[ColumnNameF]],
+    forCreate:     FragmentsForCreate[ValueF[Id], ValueF[ColumnNameF]],
+    forEntity:     FragmentsForEntity[ValueF[Id], ValueF[ColumnNameF]],
+    forSelect:     FragmentsForSelect[ValueF[Selectable], ValueF[ColumnNameF]],
+    read:          Read[ValueF[Id]],
+    emptySelect:   Empty[ValueF[Selectable]],
+  ): Repo[ValueF[Id], ValueF[Id], ValueF[Selectable], ValueF[ColumnNameF]] =
+    apply(RepoMeta.forValue[ValueF](tableName, columns))
+
+  def forEntity[EntityF[_[_], _[_]]](
+    tableName: TableName,
+    columns:   EntityF[ColumnNameF, ColumnNameF]
+  )(
+    implicit cols: AllColumns[EntityF[ColumnNameF, ColumnNameF]],
+    forCreate:     FragmentsForCreate[EntityF[Id, UnitF], EntityF[ColumnNameF, ColumnNameF]],
+    forEntity:     FragmentsForEntity[EntityF[Id, Id], EntityF[ColumnNameF, ColumnNameF]],
+    forSelect:     FragmentsForSelect[EntityF[Selectable, Selectable], EntityF[ColumnNameF, ColumnNameF]],
+    read:          Read[EntityF[Id, Id]],
+    emptySelect:   Empty[EntityF[Selectable, Selectable]],
+  ): Repo[EntityF[Id, UnitF], EntityF[Id, Id], EntityF[Selectable, Selectable], EntityF[ColumnNameF, ColumnNameF]] =
+    apply(RepoMeta.forEntity[EntityF](tableName, columns))
 
   sealed trait Sort extends Product with Serializable
   object Sort {

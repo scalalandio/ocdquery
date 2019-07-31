@@ -13,6 +13,7 @@ object Dependencies {
 
   // libraries versions
   val doobieVersion   = "0.7.0"
+  val monocleVersion  = "1.6.0"
   val specs2Version   = "4.5.1"
 
   // resolvers
@@ -26,6 +27,8 @@ object Dependencies {
   val doobieH2           = "org.tpolecat"                 %% "doobie-h2"                 % doobieVersion
   val doobieSpecs2       = "org.tpolecat"                 %% "doobie-specs2"             % doobieVersion
   val shapeless          = "com.chuusai"                  %% "shapeless"                 % "2.3.3"
+  val monocle            = "com.github.julien-truffaut"   %% "monocle-core"              % monocleVersion
+  val monocleMacros      = "com.github.julien-truffaut"   %% "monocle-macro"             % monocleVersion
   // testing
   val spec2Core          = "org.specs2"                   %% "specs2-core"               % specs2Version
   val spec2Mock          = "org.specs2"                   %% "specs2-mock"               % specs2Version
@@ -44,7 +47,7 @@ trait Dependencies {
 
   val mainDeps = Seq(doobie, shapeless)
 
-  val testDeps = Seq(doobieH2, doobieSpecs2, spec2Core, spec2Mock, spec2Scalacheck)
+  val testDeps = Seq(doobieH2, doobieSpecs2, spec2Core, spec2Mock, spec2Scalacheck, monocle, monocleMacros)
 
   implicit final class ProjectRoot(project: Project) {
 
