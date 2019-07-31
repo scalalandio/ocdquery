@@ -7,6 +7,7 @@ import cats.implicits._
 import doobie._
 import doobie.implicits._
 import io.scalaland.ocdquery.example.{ TicketF, TicketRepo }
+import monocle.macros.syntax.lens._
 import org.specs2.mutable.Specification
 
 class FetcherSpec extends Specification with WithH2Database {
@@ -50,10 +51,8 @@ class FetcherSpec extends Specification with WithH2Database {
         _ = inserted === 1
 
         // should fetch duplicated entity
-        byName = TicketRepo.emptySelect.copy[Selectable, Selectable](
-          name    = createTicket.name,
-          surname = createTicket.surname
-        )
+        byName = TicketRepo.emptySelect.lens(_.name).set(createTicket.name).lens(_.surname).set(createTicket.surname)
+
         result1 <- join1.fetch((byName, byName)).to[List]
         result2 <- join2.fetch((byName, byName, byName)).to[List]
       } yield result1 -> result2
