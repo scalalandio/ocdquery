@@ -4,10 +4,10 @@ import java.time.LocalDate
 
 import cats.Id
 import cats.implicits._
+import com.softwaremill.quicklens._
 import doobie._
 import doobie.implicits._
 import io.scalaland.ocdquery.example.{ TicketF, TicketRepo }
-import monocle.macros.syntax.lens._
 import org.specs2.mutable.Specification
 
 final class RepoSpec extends Specification with WithH2Database {
@@ -42,7 +42,11 @@ final class RepoSpec extends Specification with WithH2Database {
         _ = inserted === 1
 
         // should fetch complete entity
-        byName = TicketRepo.emptySelect.lens(_.name).set(createTicket.name).lens(_.surname).set(createTicket.surname)
+        byName = TicketRepo.emptySelect
+          .modify(_.name)
+          .setTo(createTicket.name)
+          .modify(_.surname)
+          .setTo(createTicket.surname)
         fetchedTicket <- TicketRepo.fetch(byName, limitOpt = Some(1)).unique
         expectedTicket = TicketF[Id, Id](
           id      = fetchedTicket.id,
@@ -55,7 +59,7 @@ final class RepoSpec extends Specification with WithH2Database {
         _ = fetchedTicket === expectedTicket
 
         // should update all fields but id
-        byId = TicketRepo.emptySelect.lens(_.id).set(fetchedTicket.id)
+        byId = TicketRepo.emptySelect.modify(_.id).setTo(fetchedTicket.id)
         expectedUpdated = TicketF[Id, Id](
           id      = fetchedTicket.id,
           name    = "Jane",
@@ -65,16 +69,16 @@ final class RepoSpec extends Specification with WithH2Database {
           date    = LocalDate.now().plusDays(5) // scalastyle:ignore
         )
         update = TicketRepo.emptySelect
-          .lens(_.name)
-          .set(expectedUpdated.name)
-          .lens(_.surname)
-          .set(expectedUpdated.surname)
-          .lens(_.from)
-          .set(expectedUpdated.from)
-          .lens(_.to)
-          .set(expectedUpdated.to)
-          .lens(_.date)
-          .set(expectedUpdated.date)
+          .modify(_.name)
+          .setTo(expectedUpdated.name)
+          .modify(_.surname)
+          .setTo(expectedUpdated.surname)
+          .modify(_.from)
+          .setTo(expectedUpdated.from)
+          .modify(_.to)
+          .setTo(expectedUpdated.to)
+          .modify(_.date)
+          .setTo(expectedUpdated.date)
         updated <- TicketRepo.update(byId, update).run
         _ = updated === 1
         updatedTicket <- TicketRepo.fetch(byId).unique
@@ -105,7 +109,8 @@ final class RepoSpec extends Specification with WithH2Database {
         )
       }
 
-      val filter = TicketRepo.emptySelect.lens(_.surname).set("Test").lens(_.from).set("Test").lens(_.to).set("Test")
+      val filter =
+        TicketRepo.emptySelect.modify(_.surname).setTo("Test").modify(_.from).setTo("Test").modify(_.to).setTo("Test")
 
       val test = for {
         inserted <- toCreate.traverse(TicketRepo.insert(_).run).map(_.sum)
