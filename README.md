@@ -10,7 +10,7 @@ Doobie queries generated using higher-kinded data.
 
 1. add in your sbt:
 ```scala
-libraryDependencies += "io.scalaland" %% "ocdquery-core" % "0.2.0"
+libraryDependencies += "io.scalaland" %% "ocdquery-core" % "0.3.0"
 ```
 
 2. create kigner-kinded data representation:
@@ -48,6 +48,19 @@ object TicketRepo extends Repo(
                         date    = "date"
                       ))
 )
+
+// but you can make your life even easier with a bit of default magic
+// and lenses (they don't mess up type inference like .copy does)
+
+// (lenses, not provided, pick and add them on your own!)
+// (both monocle with macro syntax and quicklenses are nice!)
+import com.softwaremill.quicklens._
+
+object TicketRepo extends Repo(
+   RepoMeta.forEntity("tickets",
+                      DefaultColumnNames.forEntity[TicketF].modify(_.from).setTo("from_")
+   )
+)
 ```
 
 4. generate queries
@@ -83,9 +96,44 @@ TicketRepo.fetch(
     to:      = Skipped,
     date:    = Skipped
   ),
-  sortOpt = Some("name" -> Sort.Ascending),
-  limitOpt = Some(5)
+  sort = Some("name" -> Sort.Ascending),
+  limit = Some(5)
 ).to[List]
+
+// or (with defaults and lenses)
+
+// (lenses, not provided, pick and add them on your own!)
+import com.softwaremill.quicklens._
+
+TicketRepo.update(
+  select = TicketRepo.emptySelect
+    .modify(_.name).setTo("John")
+    .modify(_.surname).setTo("Smith"),
+  update = TicketRepo.emptySelect
+    .modify(_.data).setTo(LocalDate.now)
+).run
+
+TicketRepo.fetch(
+  select = TicketRepo.emptySelect
+    .modify(_.from).setTo("London"),
+  sort = Some("name" -> Sort.Ascending),
+  limit = Some(5)
+).to[List]
+```
+
+5. perform even joins returning tuples of entities:
+
+```scala
+import TicketRepo.meta.Names
+
+val joiner = TicketRepo
+  .join(TicketRepo, (TicketRepo.col(_.id), TicketRepo.col(_.id)))
+  .join(TicketRepo, (_._2.id, TicketRepo.col(_.id)))
+
+joiner.fetch((filter1, filter2, filter2),
+             sort = Some(((_: (Names, Names, Names))._1.name) -> Sort.Ascending),
+             offset = None,
+             limit = Some(5)).to[List] // ConnectionIO[(Entity, Entity, Entity)]
 ```
 
 ## How does it exactly works?
