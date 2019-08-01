@@ -113,13 +113,9 @@ final class RepoSpec extends Specification with WithH2Database {
         _ = inserted === toCreate.length
         all <- TicketRepo.fetch(filter).to[List]
         _ = all.map(_.name).toSet === names.toSet
-        firstHalf <- TicketRepo
-          .fetch(filter, Some(TicketRepo.col(_.name) -> Repo.Sort.Ascending), None, Some(5))
-          .to[List]
+        firstHalf <- TicketRepo.fetch(filter, Some(TicketRepo.col(_.name) -> Sort.Ascending), None, Some(5)).to[List]
         _ = firstHalf.map(_.name) === names.take(5)
-        secondHalf <- TicketRepo
-          .fetch(filter, Some(TicketRepo.col(_.name) -> Repo.Sort.Ascending), Some(5), None)
-          .to[List]
+        secondHalf <- TicketRepo.fetch(filter, Some(TicketRepo.col(_.name) -> Sort.Ascending), Some(5), None).to[List]
       } yield secondHalf.map(_.name)
 
       test.transact(transactor).unsafeRunSync() === names.drop(5)

@@ -83,7 +83,7 @@ TicketRepo.fetch(
     to:      = Skipped,
     date:    = Skipped
   ),
-  sortOpt = Some("name" -> Repo.Sort.Ascending),
+  sortOpt = Some("name" -> Sort.Ascending),
   limitOpt = Some(5)
 ).to[List]
 ```

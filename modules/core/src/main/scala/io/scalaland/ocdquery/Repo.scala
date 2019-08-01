@@ -25,16 +25,16 @@ class Repo[C, E: Read, S: Empty, N](val meta: UnnamedRepoMeta[C, E, S, N]) { rep
   }
 
   def fetch(select:    Select,
-            sortOpt:   Option[(N => ColumnName, Repo.Sort)] = None,
+            sortOpt:   Option[(N => ColumnName, Sort)] = None,
             offsetOpt: Option[Long] = None,
             limitOpt:  Option[Long] = None): Query0[Entity] = {
     val orderBy = sortOpt match {
-      case Some((columnf, Repo.Sort.Ascending))  => Fragment.const(s"ORDER BY ${forNames[Id](columnf)} ASC")
-      case Some((columnf, Repo.Sort.Descending)) => Fragment.const(s"ORDER BY ${forNames[Id](columnf)} DESC")
-      case None                                  => Fragment.empty
+      case Some((columnf, Sort.Ascending))  => Fragment.const(s"ORDER BY ${forNames[Id](columnf)} ASC")
+      case Some((columnf, Sort.Descending)) => Fragment.const(s"ORDER BY ${forNames[Id](columnf)} DESC")
+      case None                             => Fragment.empty
     }
     val offset = offsetOpt.map(offset => Fragment.const(s"OFFSET $offset")).getOrElse(Fragment.empty)
-    val limit  = limitOpt.map(offset => Fragment.const(s"LIMIT $offset")).getOrElse(Fragment.empty)
+    val limit  = limitOpt.map(limit => Fragment.const(s"LIMIT $limit")).getOrElse(Fragment.empty)
 
     (fr"SELECT" ++ * ++ fr"FROM" ++ table ++ fr"WHERE" ++ fromSelect(select).asAnd ++ orderBy ++ offset ++ limit)
       .query[Entity]
@@ -86,10 +86,4 @@ object Repo {
     emptySelect:   Empty[EntityF[Selectable, Selectable]],
   ): Repo[EntityF[Id, UnitF], EntityF[Id, Id], EntityF[Selectable, Selectable], EntityF[ColumnNameF, ColumnNameF]] =
     apply(RepoMeta.forEntity[EntityF](tableName, columns))
-
-  sealed trait Sort extends Product with Serializable
-  object Sort {
-    case object Ascending extends Sort
-    case object Descending extends Sort
-  }
 }

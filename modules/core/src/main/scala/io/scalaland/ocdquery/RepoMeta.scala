@@ -83,12 +83,18 @@ sealed trait NamedRepoMeta[C, E, S, N] extends RepoMeta[C, E, S, N] { meta0 =>
         }
       }
 
-      val joinedOn: Option[Fragment] = on
-        .map {
-          case (nf, n1f) =>
-            Fragment.const(meta0.forNames[Id](nf) + " = " + meta.forNames[Id](n1f))
+      val joinedOn: Option[Fragment] =
+        (meta0.joinedOn -> on
+          .map {
+            case (nf, n1f) =>
+              Fragment.const(meta0.forNames[Id](nf) + " = " + meta.forNames[Id](n1f))
+          }
+          .reduceOption(_ ++ Fragment.const("AND") ++ _)) match {
+          case (Some(j1), Some(j2)) => Some(j1 ++ Fragment.const("AND") ++ j2)
+          case (Some(j), None)      => Some(j)
+          case (None, Some(j))      => Some(j)
+          case (None, None)         => None
         }
-        .reduceOption(_ ++ Fragment.const("AND") ++ _)
     }
 }
 
