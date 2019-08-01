@@ -24,19 +24,19 @@ class Repo[C, E: Read, S: Empty, N](val meta: UnnamedRepoMeta[C, E, S, N]) { rep
     (fr"INSERT INTO" ++ table ++ fr"(" ++ fragments.asSelect ++ fr") VALUES (" ++ fragments.asValues ++ fr")").update
   }
 
-  def fetch(select:    Select,
-            sortOpt:   Option[(N => ColumnName, Sort)] = None,
-            offsetOpt: Option[Long] = None,
-            limitOpt:  Option[Long] = None): Query0[Entity] = {
-    val orderBy = sortOpt match {
+  def fetch(select: Select,
+            sort:   Option[(N => ColumnName, Sort)] = None,
+            offset: Option[Long] = None,
+            limit:  Option[Long] = None): Query0[Entity] = {
+    val orderBy = sort match {
       case Some((columnf, Sort.Ascending))  => Fragment.const(s"ORDER BY ${forNames[Id](columnf)} ASC")
       case Some((columnf, Sort.Descending)) => Fragment.const(s"ORDER BY ${forNames[Id](columnf)} DESC")
       case None                             => Fragment.empty
     }
-    val offset = offsetOpt.map(offset => Fragment.const(s"OFFSET $offset")).getOrElse(Fragment.empty)
-    val limit  = limitOpt.map(limit => Fragment.const(s"LIMIT $limit")).getOrElse(Fragment.empty)
+    val offsetFr = offset.map(offset => Fragment.const(s"OFFSET $offset")).getOrElse(Fragment.empty)
+    val limitFr  = limit.map(limit => Fragment.const(s"LIMIT $limit")).getOrElse(Fragment.empty)
 
-    (fr"SELECT" ++ * ++ fr"FROM" ++ table ++ fr"WHERE" ++ fromSelect(select).asAnd ++ orderBy ++ offset ++ limit)
+    (fr"SELECT" ++ * ++ fr"FROM" ++ table ++ fr"WHERE" ++ fromSelect(select).asAnd ++ orderBy ++ offsetFr ++ limitFr)
       .query[Entity]
   }
 

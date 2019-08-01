@@ -50,7 +50,7 @@ final class RepoSpec extends Specification with WithH2Database {
           .setTo(createTicket.name)
           .modify(_.surname)
           .setTo(createTicket.surname)
-        fetchedTicket <- TicketRepo.fetch(byName, limitOpt = Some(1)).unique
+        fetchedTicket <- TicketRepo.fetch(byName, limit = Some(1)).unique
         expectedTicket = TicketF[Id, Id](
           id      = fetchedTicket.id,
           name    = createTicket.name,

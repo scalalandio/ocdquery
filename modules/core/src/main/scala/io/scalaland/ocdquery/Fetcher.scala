@@ -12,20 +12,20 @@ class Fetcher[C, E: Read, S, N](val meta: NamedRepoMeta[C, E, S, N]) {
 
   val read: Read[E] = Read[E]
 
-  def fetch(select:    Select,
-            sortOpt:   Option[(N => ColumnName, Sort)] = None,
-            offsetOpt: Option[Long] = None,
-            limitOpt:  Option[Long] = None): Query0[Entity] = {
-    val orderBy = sortOpt match {
+  def fetch(select: Select,
+            sort:   Option[(N => ColumnName, Sort)] = None,
+            offset: Option[Long] = None,
+            limit:  Option[Long] = None): Query0[Entity] = {
+    val orderBy = sort match {
       case Some((columnf, Sort.Ascending))  => Fragment.const(s"ORDER BY ${forNames[Id](columnf)} ASC")
       case Some((columnf, Sort.Descending)) => Fragment.const(s"ORDER BY ${forNames[Id](columnf)} DESC")
       case None                             => Fragment.empty
     }
-    val joinOn = joinedOn.map(fr"ON" ++ _).getOrElse(Fragment.empty)
-    val where  = fr"WHERE" ++ fromSelect(select).asAnd
-    val offset = offsetOpt.map(offset => Fragment.const(s"OFFSET $offset")).getOrElse(Fragment.empty)
-    val limit  = limitOpt.map(limit => Fragment.const(s"LIMIT $limit")).getOrElse(Fragment.empty)
-    (fr"SELECT" ++ * ++ fr"FROM" ++ table ++ joinOn ++ where ++ orderBy ++ offset ++ limit).query[Entity]
+    val joinOn   = joinedOn.map(fr"ON" ++ _).getOrElse(Fragment.empty)
+    val where    = fr"WHERE" ++ fromSelect(select).asAnd
+    val offsetFr = offset.map(offset => Fragment.const(s"OFFSET $offset")).getOrElse(Fragment.empty)
+    val limitFr  = limit.map(limit => Fragment.const(s"LIMIT $limit")).getOrElse(Fragment.empty)
+    (fr"SELECT" ++ * ++ fr"FROM" ++ table ++ joinOn ++ where ++ orderBy ++ offsetFr ++ limitFr).query[Entity]
   }
 
   def join[C1, E1, S1, N1, C0, E0, S0, N0](repo2: Repo[C1, E1, S1, N1], on: (N => ColumnName, N1 => ColumnName)*)(
