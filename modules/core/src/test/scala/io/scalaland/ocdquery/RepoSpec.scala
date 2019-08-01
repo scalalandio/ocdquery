@@ -27,14 +27,17 @@ final class RepoSpec extends Specification with WithH2Database {
   "Repo" should {
 
     "generate Fragments allowing you to perform basic CRUD operations" in {
-      val createTicket = TicketF[Id, UnitF](
-        id      = (),
-        name    = "John",
-        surname = "Smith",
-        from    = "New York",
-        to      = "London",
-        date    = LocalDate.now()
-      )
+      val createTicket = Create
+        .entity[TicketF]
+        .fromTuple(
+          (
+            "John",
+            "Smith",
+            "New York",
+            "London",
+            LocalDate.now()
+          )
+        )
 
       val test: ConnectionIO[Option[TicketF[Id, Id]]] = for {
         // should generate ID within SQL
@@ -99,14 +102,7 @@ final class RepoSpec extends Specification with WithH2Database {
       val names = List("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k")
 
       val toCreate = names.map { name =>
-        TicketF[Id, UnitF](
-          id      = (),
-          name    = name,
-          surname = "Test",
-          from    = "Test",
-          to      = "Test",
-          date    = now
-        )
+        Create.entity[TicketF].fromTuple((name, "Test", "Test", "Test", now))
       }
 
       val filter =
