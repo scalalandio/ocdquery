@@ -70,7 +70,7 @@ object Repo {
     forEntity:     FragmentsForEntity[ValueF[Id], ValueF[ColumnNameF]],
     forSelect:     FragmentsForSelect[ValueF[Selectable], ValueF[ColumnNameF]],
     read:          Read[ValueF[Id]],
-    emptySelect:   Empty[ValueF[Selectable]],
+    emptySelect:   Empty[ValueF[Selectable]]
   ): Repo[ValueF[Id], ValueF[Id], ValueF[Selectable], ValueF[ColumnNameF]] =
     apply(RepoMeta.forValue[ValueF](tableName, columns))
 
@@ -83,7 +83,7 @@ object Repo {
     forEntity:     FragmentsForEntity[EntityF[Id, Id], EntityF[ColumnNameF, ColumnNameF]],
     forSelect:     FragmentsForSelect[EntityF[Selectable, Selectable], EntityF[ColumnNameF, ColumnNameF]],
     read:          Read[EntityF[Id, Id]],
-    emptySelect:   Empty[EntityF[Selectable, Selectable]],
+    emptySelect:   Empty[EntityF[Selectable, Selectable]]
   ): Repo[EntityF[Id, UnitF], EntityF[Id, Id], EntityF[Selectable, Selectable], EntityF[ColumnNameF, ColumnNameF]] =
     apply(RepoMeta.forEntity[EntityF](tableName, columns))
 }
