@@ -49,7 +49,7 @@ final class RepoSpec extends Specification with WithH2Database {
           to      = Skipped,
           date    = Skipped
         )
-        fetchedTicket <- TicketRepo.fetch(byName).unique
+        fetchedTicket <- TicketRepo.fetch(byName, limitOpt = Some(1)).unique
         expectedTicket = TicketF[Id, Id](
           id      = fetchedTicket.id,
           name    = createTicket.name,
