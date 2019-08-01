@@ -12,6 +12,7 @@ object TupleAppender extends TupleAppenderLowPriorityImplicit {
 
   def apply[A, B, C](implicit ta: TupleAppender[A, B, C]): TupleAppender[A, B, C] = ta
 
+  //TODO: rewrite using Untupler
   implicit def appendTuple[A, ARep <: HList, ASize <: Nat, B, C <: Product, CGen <: HList](
     implicit aIsTuple: IsTuple[A],
     aGen:              Generic.Aux[A, ARep],

@@ -2,7 +2,6 @@ package io.scalaland.ocdquery
 
 import java.time.LocalDate
 
-import cats.Id
 import cats.implicits._
 import com.softwaremill.quicklens._
 import doobie._
@@ -27,14 +26,7 @@ class FetcherSpec extends Specification with WithH2Database {
   "Fetcher" should {
 
     "generate Fragments allowing you to perform basic CRUD operations" in {
-      val createTicket = TicketF[Id, UnitF](
-        id      = (),
-        name    = "John",
-        surname = "Smith",
-        from    = "New York",
-        to      = "London",
-        date    = LocalDate.now()
-      )
+      val createTicket = Create.entity[TicketF].fromTuple(("John", "Smith", "New York", "London", LocalDate.now()))
 
       import TicketRepo.meta.{ Create, Entity, Names, Select }
       type Double[A] = (A, A)
