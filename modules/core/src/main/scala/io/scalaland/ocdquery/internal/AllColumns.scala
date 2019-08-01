@@ -11,16 +11,17 @@ import scala.annotation.implicitNotFound
     "so that ${C} is made of Strings only"
 )
 trait AllColumns[C] {
-  def getList(c: C): List[ColumnName]
+  def getList(c: C): List[ColumnName[Any]]
 }
 
 object AllColumns {
 
-  implicit val hnilCase: AllColumns[HNil] = _ => List.empty
+  implicit val hnilAllColumns: AllColumns[HNil] = _ => List.empty
 
-  implicit def hconsCase[C <: HList](implicit cColumns: AllColumns[C]): AllColumns[ColumnName :: C] =
-    (sc: ColumnName :: C) => sc.head :: cColumns.getList(sc.tail)
+  implicit def hconsAllColumns[A, C <: HList](implicit cColumns: AllColumns[C]): AllColumns[ColumnName[A] :: C] =
+    (sc: ColumnName[A] :: C) => sc.head.as[Any] :: cColumns.getList(sc.tail)
 
-  implicit def productCase[A, B <: HList](implicit rep: Generic.Aux[A, B], hlistColumns: AllColumns[B]): AllColumns[A] =
+  implicit def productAllColumns[A, B <: HList](implicit rep: Generic.Aux[A, B],
+                                                hlistColumns: AllColumns[B]): AllColumns[A] =
     (a: A) => hlistColumns.getList(rep.to(a))
 }

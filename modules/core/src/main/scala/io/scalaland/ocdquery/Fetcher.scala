@@ -4,38 +4,52 @@ import cats.Id
 import cats.implicits._
 import doobie._
 import doobie.implicits._
-import io.scalaland.ocdquery.internal.{ RandomName, TupleAppender }
+import io.scalaland.ocdquery.internal.{ NamedRepoMeta, RandomPrefix }
+import io.scalaland.ocdquery.missingshapeless.TupleAppender
 
-class Fetcher[C, E: Read, S, N](val meta: NamedRepoMeta[C, E, S, N]) {
+class Fetcher[C, E: Read, U, N](val meta: NamedRepoMeta[C, E, U, N]) {
 
   import meta._
 
-  val read: Read[E] = Read[E]
+  val read: Read[Entity] = Read[Entity]
 
-  def fetch(select: Select,
-            sort:   Option[(N => ColumnName, Sort)] = None,
-            offset: Option[Long] = None,
-            limit:  Option[Long] = None): Query0[Entity] = {
-    val orderBy = sort match {
-      case Some((columnf, Sort.Ascending))  => Fragment.const(s"ORDER BY ${forNames[Id](columnf)} ASC")
-      case Some((columnf, Sort.Descending)) => Fragment.const(s"ORDER BY ${forNames[Id](columnf)} DESC")
-      case None                             => Fragment.empty
+  case class Fetch private[Fetcher] (sort:   Option[(Names => ColumnName[Any], Sort)] = None,
+                                     offset: Option[Long]                             = None,
+                                     limit:  Option[Long]                             = None) {
+
+    def withSort[A](by: Names => ColumnName[A], direction: Sort): Fetch =
+      copy(sort = Some(by.andThen(_.as[Any]) -> direction))
+
+    def withOffset(offset: Long): Fetch = copy(offset = Some(offset))
+
+    def withLimit(limit: Long): Fetch = copy(limit = Some(limit))
+
+    def apply(filter: Names => Filter): Query0[Entity] = {
+      val orderBy = sort match {
+        case Some((columnf, Sort.Ascending))  => Fragment.const(s"ORDER BY ${namedColForNames[Id](columnf)} ASC")
+        case Some((columnf, Sort.Descending)) => Fragment.const(s"ORDER BY ${namedColForNames[Id](columnf)} DESC")
+        case None                             => Fragment.empty
+      }
+      val joinOn   = joinedOn.map(fr"ON" ++ _).getOrElse(Fragment.empty)
+      val where    = fr"WHERE" ++ namedColForFilter(filter).fragment
+      val offsetFr = offset.map(offset => Fragment.const(s"OFFSET $offset")).getOrElse(Fragment.empty)
+      val limitFr  = limit.map(limit => Fragment.const(s"LIMIT $limit")).getOrElse(Fragment.empty)
+      (fr"SELECT" ++ * ++ fr"FROM" ++ table ++ joinOn ++ where ++ orderBy ++ offsetFr ++ limitFr).query[Entity]
     }
-    val joinOn   = joinedOn.map(fr"ON" ++ _).getOrElse(Fragment.empty)
-    val where    = fr"WHERE" ++ fromSelect(select).asAnd
-    val offsetFr = offset.map(offset => Fragment.const(s"OFFSET $offset")).getOrElse(Fragment.empty)
-    val limitFr  = limit.map(limit => Fragment.const(s"LIMIT $limit")).getOrElse(Fragment.empty)
-    (fr"SELECT" ++ * ++ fr"FROM" ++ table ++ joinOn ++ where ++ orderBy ++ offsetFr ++ limitFr).query[Entity]
+  }
+  def fetch: Fetch = Fetch()
+
+  def join[C1, E1, S1, N1, F1](repo2: Repo[C1, E1, S1, N1], joinType: JoinType = JoinType.Inner)(
+    implicit
+    cta: TupleAppender[C, C1],
+    eta: TupleAppender[E, E1],
+    sta: TupleAppender[U, S1],
+    nta: TupleAppender[N, N1]
+  ): Fetcher[cta.Out, eta.Out, sta.Out, nta.Out] = {
+    implicit val readE0: Read[eta.Out] = (read, repo2.read).mapN((e, e1) => eta.append(e, e1))
+    new Fetcher(meta.join(repo2.meta.as(RandomPrefix.next), joinType))
   }
 
-  def join[C1, E1, S1, N1, C0, E0, S0, N0](repo2: Repo[C1, E1, S1, N1], on: (N => ColumnName, N1 => ColumnName)*)(
-    implicit
-    cta: TupleAppender[C, C1, C0],
-    eta: TupleAppender[E, E1, E0],
-    sta: TupleAppender[S, S1, S0],
-    nta: TupleAppender[N, N1, N0]
-  ): Fetcher[C0, E0, S0, N0] = {
-    implicit val readE0: Read[E0] = (read, repo2.read).mapN((e, e1) => eta.append(e, e1))
-    new Fetcher(meta.join(repo2.meta.as(RandomName.next), on.toSeq: _*))
-  }
+  def on[A, B](left: N => ColumnName[A], right: N => ColumnName[B]): Fetcher[C, E, U, N] =
+    new Fetcher(meta.on(left.andThen(_.as[Any]), right.andThen(_.as[Any])))
 }

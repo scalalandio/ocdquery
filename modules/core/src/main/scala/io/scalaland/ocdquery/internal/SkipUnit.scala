@@ -1,11 +1,10 @@
 package io.scalaland.ocdquery.internal
 
+import io.scalaland.ocdquery.missingshapeless.Untupler
 import shapeless._
 
 trait SkipUnit[C] {
-
   type SU
-
   def from(skipped: SU): C
 }
 

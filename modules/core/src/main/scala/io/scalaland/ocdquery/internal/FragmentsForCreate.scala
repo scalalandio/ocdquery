@@ -13,20 +13,20 @@ import scala.annotation.implicitNotFound
     "and make sure doobie.Meta instances are available for all fields"
 )
 trait FragmentsForCreate[V, C] {
-  def toFragments(value: V, columns: C): List[(ColumnName, Fragment)]
+  def toFragments(value: V, columns: C): List[(ColumnName[Any], Fragment)]
 }
 
 object FragmentsForCreate extends LowPriorityFragmentsForCreate {
 
-  implicit val hnilCase: FragmentsForCreate[HNil, HNil] = (_: HNil, _: HNil) => List.empty
+  implicit val hnilFragmentsForCreate: FragmentsForCreate[HNil, HNil] = (_: HNil, _: HNil) => List.empty
 
   // skip unit types
-  implicit def hconsUnitCase[VT <: HList, CT <: HList](
+  implicit def hconsUnitFragmentsForCreate[H, VT <: HList, CT <: HList](
     implicit tail: FragmentsForCreate[VT, CT]
-  ): FragmentsForCreate[Unit :: VT, String :: CT] =
-    (v: Unit :: VT, c: String :: CT) => tail.toFragments(v.tail, c.tail)
+  ): FragmentsForCreate[Unit :: VT, ColumnName[H] :: CT] =
+    (v: Unit :: VT, c: ColumnName[H] :: CT) => tail.toFragments(v.tail, c.tail)
 
-  implicit def productCase[V, C, VRep <: HList, CRep <: HList](
+  implicit def productFragmentsForCreate[V, C, VRep <: HList, CRep <: HList](
     implicit entryGen: Generic.Aux[V, VRep],
     columnsGen:        Generic.Aux[C, CRep],
     repCase:           FragmentsForCreate[VRep, CRep]
@@ -36,9 +36,9 @@ object FragmentsForCreate extends LowPriorityFragmentsForCreate {
 
 trait LowPriorityFragmentsForCreate {
 
-  implicit def hconsCase[H, VT <: HList, CT <: HList](
+  implicit def hconsFragmentsForCreate[H, VT <: HList, CT <: HList](
     implicit meta: Meta[H],
     tail:          FragmentsForCreate[VT, CT]
-  ): FragmentsForCreate[H :: VT, String :: CT] =
-    (v: H :: VT, c: String :: CT) => (c.head -> fr"${v.head}") :: tail.toFragments(v.tail, c.tail)
+  ): FragmentsForCreate[H :: VT, ColumnName[H] :: CT] =
+    (v: H :: VT, c: ColumnName[H] :: CT) => (c.head.as[Any] -> fr"${v.head}") :: tail.toFragments(v.tail, c.tail)
 }

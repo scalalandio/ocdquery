@@ -1,4 +1,4 @@
-package io.scalaland.ocdquery.internal
+package io.scalaland.ocdquery.missingshapeless
 
 import shapeless._
 

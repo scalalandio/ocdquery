@@ -3,10 +3,10 @@ package io.scalaland.ocdquery
 import java.time.LocalDate
 
 import cats.implicits._
-import com.softwaremill.quicklens._
 import doobie._
 import doobie.implicits._
 import io.scalaland.ocdquery.example.{ TicketF, TicketRepo }
+import io.scalaland.ocdquery.sql._
 import org.specs2.mutable.Specification
 
 class FetcherSpec extends Specification with WithH2Database {
@@ -25,14 +25,23 @@ class FetcherSpec extends Specification with WithH2Database {
 
   "Fetcher" should {
 
-    import TicketRepo.meta.{ Create, Entity, Names, Select }
+    import TicketRepo.meta.Entity
     type Double[A] = (A, A)
     type Triple[A] = (A, A, A)
 
-    val join1: Fetcher[Double[Create], Double[Entity], Double[Select], Double[Names]] =
-      TicketRepo.join(TicketRepo, (TicketRepo.col(_.id), TicketRepo.col(_.id)))
-    val join2: Fetcher[Triple[Create], Triple[Entity], Triple[Select], Triple[Names]] =
-      join1.join(TicketRepo, (_._2.id, TicketRepo.col(_.id)))
+    val join1 = TicketRepo.join(TicketRepo).on(_._1.id, _._2.id)
+    val join2 = join1.join(TicketRepo).on(_._2.id, _._3.id)
+
+    TicketRepo
+      .join(TicketRepo)
+      .on(_._1.id, _._2.id)
+      .join(TicketRepo)
+      .on(_._2.id, _._3.id)
+      .fetch { cols =>
+        (cols._1.name `=` "John") and (cols._1.surname `=` "Smith") and
+          (cols._2.name `=` "John") and (cols._2.surname `=` "Smith")
+      }
+      .to[List]
 
     "generate Fragments allowing you to perform basic CRUD operations" in {
       val createTicket = Create.entity[TicketF].fromTuple(("John", "Smith", "New York", "London", LocalDate.now()))
@@ -43,14 +52,20 @@ class FetcherSpec extends Specification with WithH2Database {
         _ = inserted === 1
 
         // should fetch duplicated entity
-        byName = TicketRepo.emptySelect
-          .modify(_.name)
-          .setTo(createTicket.name)
-          .modify(_.surname)
-          .setTo(createTicket.surname)
-
-        result1 <- join1.fetch((byName, byName)).to[List]
-        result2 <- join2.fetch((byName, byName, byName)).to[List]
+        result1 <- join1
+          .fetch { cols =>
+            (cols._1.name `=` createTicket.name) and (cols._1.surname `=` createTicket.surname) and
+              (cols._2.name `=` createTicket.name) and (cols._2.surname `=` createTicket.surname)
+          }
+          .to[List]
+        // should fetch tripled entity
+        result2 <- join2
+          .fetch { cols =>
+            (cols._1.name `=` createTicket.name) and (cols._1.surname `=` createTicket.surname) and
+              (cols._2.name `=` createTicket.name) and (cols._2.surname `=` createTicket.surname) and
+              (cols._3.name `=` createTicket.name) and (cols._3.surname `=` createTicket.surname)
+          }
+          .to[List]
       } yield result1 -> result2
 
       val (result1: List[Double[Entity]], result2: List[Triple[Entity]]) = test.transact(transactor).unsafeRunSync()
@@ -78,35 +93,46 @@ class FetcherSpec extends Specification with WithH2Database {
         Create.entity[TicketF].fromTuple((name, "TestFetcher", "TestFetcher", "TestFetcher", now))
       }
 
-      val filter =
-        TicketRepo.emptySelect
-          .modify(_.surname)
-          .setTo("TestFetcher")
-          .modify(_.from)
-          .setTo("TestFetcher")
-          .modify(_.to)
-          .setTo("TestFetcher")
-
       val test = for {
         inserted <- toCreate.traverse(TicketRepo.insert(_).run).map(_.sum)
         _ = inserted === toCreate.length
 
-        all1 <- join1.fetch((filter, filter)).to[List]
+        all1 <- join1
+          .fetch { cols =>
+            (cols._1.name `=` "TestFetcher") and (cols._1.surname `=` "TestFetcher") and
+              (cols._2.name `=` "TestFetcher") and (cols._2.surname `=` "TestFetcher")
+          }
+          .to[List]
         _ = all1.map(_._1.name).toSet === names.toSet
         _ = all1.map(_._2.name).toSet === names.toSet
-        all2 <- join2.fetch((filter, filter, filter)).to[List]
+        all2 <- join2
+          .fetch { cols =>
+            (cols._1.name `=` "TestFetcher") and (cols._1.surname `=` "TestFetcher") and
+              (cols._2.name `=` "TestFetcher") and (cols._2.surname `=` "TestFetcher") and
+              (cols._3.name `=` "TestFetcher") and (cols._3.surname `=` "TestFetcher")
+          }
+          .to[List]
         _ = all2.map(_._1.name).toSet === names.toSet
         _ = all2.map(_._2.name).toSet === names.toSet
         _ = all2.map(_._3.name).toSet === names.toSet
 
-        firstHalf <- join2
-          .fetch((filter, filter, filter), Some(((_: Triple[Names])._1.name) -> Sort.Ascending), None, Some(5))
+        firstHalf <- join2.fetch
+          .withSort(_._1.name, Sort.Ascending)
+          .withLimit(5) { cols =>
+            (cols._1.name `=` "TestFetcher") and (cols._1.surname `=` "TestFetcher") and
+              (cols._2.name `=` "TestFetcher") and (cols._2.surname `=` "TestFetcher") and
+              (cols._3.name `=` "TestFetcher") and (cols._3.surname `=` "TestFetcher")
+          }
           .to[List]
         _ = firstHalf.map(_._1.name) === names.take(5)
         _ = firstHalf.map(_._2.name) === names.take(5)
         _ = firstHalf.map(_._3.name) === names.take(5)
-        secondHalf <- join2
-          .fetch((filter, filter, filter), Some(((_: Triple[Names])._1.name) -> Sort.Ascending), Some(5), None)
+        secondHalf <- join2.fetch
+          .withOffset(5) { cols =>
+            (cols._1.name `=` "TestFetcher") and (cols._1.surname `=` "TestFetcher") and
+              (cols._2.name `=` "TestFetcher") and (cols._2.surname `=` "TestFetcher") and
+              (cols._3.name `=` "TestFetcher") and (cols._3.surname `=` "TestFetcher")
+          }
           .to[List]
       } yield secondHalf.map(_._1.name)
 

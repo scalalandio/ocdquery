@@ -13,20 +13,20 @@ import scala.annotation.implicitNotFound
     "and make sure doobie.Meta instances are available for all fields"
 )
 trait FragmentsForEntity[V, C] {
-  def toFragments(value: V, columns: C): List[(ColumnName, Fragment)]
+  def toFragments(value: V, columns: C): List[(ColumnName[Any], Fragment)]
 }
 
 object FragmentsForEntity {
 
-  implicit val hnilCase: FragmentsForEntity[HNil, HNil] = (_: HNil, _: HNil) => List.empty
+  implicit val hnilFragmentsForEntity: FragmentsForEntity[HNil, HNil] = (_: HNil, _: HNil) => List.empty
 
-  implicit def hconsCase[H, VT <: HList, CT <: HList](
+  implicit def hconsFragmentsForEntity[H, VT <: HList, CT <: HList](
     implicit meta: Meta[H],
     tail:          FragmentsForEntity[VT, CT]
-  ): FragmentsForEntity[H :: VT, String :: CT] =
-    (v: H :: VT, c: String :: CT) => (c.head -> fr"${v.head}") :: tail.toFragments(v.tail, c.tail)
+  ): FragmentsForEntity[H :: VT, ColumnName[H] :: CT] =
+    (v: H :: VT, c: ColumnName[H] :: CT) => (c.head.as[Any] -> fr"${v.head}") :: tail.toFragments(v.tail, c.tail)
 
-  implicit def productCase[V, C, VRep <: HList, CRep <: HList](
+  implicit def productFragmentsForEntity[V, C, VRep <: HList, CRep <: HList](
     implicit entryGen: Generic.Aux[V, VRep],
     columnsGen:        Generic.Aux[C, CRep],
     repCase:           FragmentsForEntity[VRep, CRep]

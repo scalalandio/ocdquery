@@ -15,6 +15,7 @@ lazy val core = project.from("core")
   .configureModule
   .configureTests()
   .publish
+  .settings(addCompilerPlugin("io.tryp" % "splain" % "0.4.1" cross CrossVersion.patch))
   .settings(Compile / resourceGenerators += task[Seq[File]] {
     val file = (Compile / resourceManaged).value / "ocdquery-version.conf"
     IO.write(file, s"version=${version.value}")

@@ -7,18 +7,13 @@ import scala.collection.immutable.ListMap
 
 package object ocdquery {
 
-  type TableName = String
-
-  type ColumnName     = String
-  type ColumnNameF[_] = String
-
   type UnitF[_] = Unit
 
   @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
-  implicit class FragmentsOps(val fragments: ListMap[ColumnName, Fragment]) extends AnyVal {
+  implicit class FragmentsOps(val fragments: ListMap[ColumnName[Any], Fragment]) extends AnyVal {
 
     def asSelect: Fragment =
-      fragments.keysIterator.map(Fragment.const(_)).reduce(_ ++ fr"," ++ _)
+      fragments.keysIterator.map(column => Fragment.const(column.name)).reduce(_ ++ fr"," ++ _)
     def asAnd: Fragment =
       fragments.map { case (column, value) => Fragment.const(s"$column = ") ++ value }.reduce(_ ++ fr"AND" ++ _)
     def asOr: Fragment =
@@ -29,5 +24,12 @@ package object ocdquery {
       fragments.valuesIterator.reduce(_ ++ fr"," ++ _)
   }
 
-  implicit def liftToSelectable[A](a: A): Selectable[A] = Option(a).map(Fixed(_)).getOrElse(Skipped)
+  implicit class AsNameOps(val name: String) extends AnyVal {
+
+    def columnName[A]: ColumnName[A] = ColumnName(name)
+
+    def tableName: TableName = TableName(name)
+  }
+
+  implicit def liftToUpdatable[A](a: A): Updatable[A] = Option(a).map(UpdateTo(_)).getOrElse(Skip)
 }

@@ -7,7 +7,9 @@ import cats.implicits._
 import com.softwaremill.quicklens._
 import doobie._
 import doobie.implicits._
+import doobie.h2.implicits._
 import io.scalaland.ocdquery.example.{ TicketF, TicketRepo }
+import io.scalaland.ocdquery.sql._
 import org.specs2.mutable.Specification
 
 final class RepoSpec extends Specification with WithH2Database {
@@ -45,12 +47,11 @@ final class RepoSpec extends Specification with WithH2Database {
         _ = inserted === 1
 
         // should fetch complete entity
-        byName = TicketRepo.emptySelect
-          .modify(_.name)
-          .setTo(createTicket.name)
-          .modify(_.surname)
-          .setTo(createTicket.surname)
-        fetchedTicket <- TicketRepo.fetch(byName, limit = Some(1)).unique
+        fetchedTicket <- TicketRepo.fetch
+          .withLimit(1) { cols =>
+            (cols.name `=` createTicket.name) and (cols.surname `=` createTicket.surname)
+          }
+          .unique
         expectedTicket = TicketF[Id, Id](
           id      = fetchedTicket.id,
           name    = createTicket.name,
@@ -62,7 +63,6 @@ final class RepoSpec extends Specification with WithH2Database {
         _ = fetchedTicket === expectedTicket
 
         // should update all fields but id
-        byId = TicketRepo.emptySelect.modify(_.id).setTo(fetchedTicket.id)
         expectedUpdated = TicketF[Id, Id](
           id      = fetchedTicket.id,
           name    = "Jane",
@@ -71,7 +71,7 @@ final class RepoSpec extends Specification with WithH2Database {
           to      = "New York",
           date    = LocalDate.now().plusDays(5) // scalastyle:ignore
         )
-        update = TicketRepo.emptySelect
+        update = TicketRepo.emptyUpdate
           .modify(_.name)
           .setTo(expectedUpdated.name)
           .modify(_.surname)
@@ -82,15 +82,17 @@ final class RepoSpec extends Specification with WithH2Database {
           .setTo(expectedUpdated.to)
           .modify(_.date)
           .setTo(expectedUpdated.date)
-        updated <- TicketRepo.update(byId, update).run
+        updated <- TicketRepo.update.withFilter { cols =>
+          cols.id `=` fetchedTicket.id
+        }(update).run
         _ = updated === 1
-        updatedTicket <- TicketRepo.fetch(byId).unique
+        updatedTicket <- TicketRepo.fetch(_.id `=` fetchedTicket.id).unique
         _ = updatedTicket === expectedUpdated
 
         // should delete ticket
-        deleted <- TicketRepo.delete(byId).run
+        deleted <- TicketRepo.delete(_.id `=` fetchedTicket.id).run
         _ = deleted === 1
-        deletedTicket <- TicketRepo.fetch(byId).option
+        deletedTicket <- TicketRepo.fetch(_.id `=` fetchedTicket.id).option
       } yield deletedTicket
 
       test.transact(transactor).unsafeRunSync() === None
@@ -105,17 +107,28 @@ final class RepoSpec extends Specification with WithH2Database {
         Create.entity[TicketF].fromTuple((name, "Test", "Test", "Test", now))
       }
 
-      val filter =
-        TicketRepo.emptySelect.modify(_.surname).setTo("Test").modify(_.from).setTo("Test").modify(_.to).setTo("Test")
-
       val test = for {
         inserted <- toCreate.traverse(TicketRepo.insert(_).run).map(_.sum)
         _ = inserted === toCreate.length
-        all <- TicketRepo.fetch(filter).to[List]
+        all <- TicketRepo
+          .fetch { cols =>
+            (cols.surname `=` "Test") and (cols.from `=` "Test") and (cols.to `=` "Test")
+          }
+          .to[List]
         _ = all.map(_.name).toSet === names.toSet
-        firstHalf <- TicketRepo.fetch(filter, Some(TicketRepo.col(_.name) -> Sort.Ascending), None, Some(5)).to[List]
+        firstHalf <- TicketRepo.fetch
+          .withSort(_.name, Sort.Ascending)
+          .withLimit(5) { cols =>
+            (cols.surname `=` "Test") and (cols.from `=` "Test") and (cols.to `=` "Test")
+          }
+          .to[List]
         _ = firstHalf.map(_.name) === names.take(5)
-        secondHalf <- TicketRepo.fetch(filter, Some(TicketRepo.col(_.name) -> Sort.Ascending), Some(5), None).to[List]
+        secondHalf <- TicketRepo.fetch
+          .withSort(_.name, Sort.Ascending)
+          .withOffset(5) { cols =>
+            (cols.surname `=` "Test") and (cols.from `=` "Test") and (cols.to `=` "Test")
+          }
+          .to[List]
       } yield secondHalf.map(_.name)
 
       test.transact(transactor).unsafeRunSync() === names.drop(5)
