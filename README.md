@@ -4,7 +4,7 @@
 [![Maven Central](https://img.shields.io/maven-central/v/io.scalaland/ocdquery-core_2.12.svg)](http://search.maven.org/#search%7Cga%7C1%7Cocdquery)
 [![License](http://img.shields.io/:license-Apache%202-green.svg)](http://www.apache.org/licenses/LICENSE-2.0.txt)
 
-Doobie queries generated using higher-kinded data.
+[Doobie](https://github.com/tpolecat/doobie/) queries generated using higher-kinded data.
 
 ## Instalation
 
@@ -12,10 +12,10 @@ Doobie queries generated using higher-kinded data.
 ```scala
 libraryDependencies += "io.scalaland" %% "ocdquery-core" % "0.4.0"
 ```
-(and maybe some optica library like [Quicklens](https://github.com/softwaremill/quicklens)
+(and maybe some optics library like [Quicklens](https://github.com/softwaremill/quicklens)
 or [Monocle](https://github.com/julien-truffaut/Monocle))
 
-2. create higner-kinded data representation:
+2. create higher-kinded data representation:
 
 ```scala
 import java.time.LocalDate
@@ -210,7 +210,7 @@ final case class TicketColumns(
 )
 ```
 
-### Refactoring idea
+### Idea of a refactor
 
 If we take a closer look, we'll see that we have 3 case classes that are
 virtually identical - if we were able to flip the type of some fields from
@@ -224,8 +224,8 @@ And we can do this! The idea is called higher-kinded data and looks like this:
 import java.time.LocalDate
 import java.util.UUID
 
-type Id[A] = A // turns 
-type UnitF[A] = Unit // make fields not available at creation "disappear" 
+type Id[A] = A // removed F[_] wrapper
+type UnitF[A] = Unit // make fields not available at creation "disappear"
 case class ColumnName[A](name: String) // preserves name of column in DB and its type
 
 // F is for normal columns which should be available in some what for all lifecycle
@@ -270,7 +270,7 @@ During implementation some decisions had to be made:
    
    val ticketRepo = new EntityRepo(ticketRepoMeta)
    ```
- * to avoid writing `EntityF[Id, Id]`, `EntityF[Selectable, Selectable]` and `EntityF[Id, UnitF]`
+ * to avoid writing `EntityF[Id, Id]`, `EntityF[Updatable, Updatable]` and `EntityF[Id, UnitF]`
    manually, some type aliases were introduced:
    ```scala
    import io.scalaland.ocdquery._
@@ -278,6 +278,13 @@ During implementation some decisions had to be made:
    type TicketCreate = Repo.ForEntity[TicketF]#EntityCreate
    type Ticket       = Repo.ForEntity[TicketF]#Entity
    type TicketUpdate = Repo.ForEntity[TicketF]#EntityUpdate
+   ```
+ * if you want to extend filtering DSL you can write your own extension methods like:
+   ```scala
+   implicit class MyNewFiltering(columnName: ColumnName[Int]) {
+   
+     def <(number: Int): Filter = () => Fragment.const(columnName.name) ++ fr"< $number"
+   }
    ```
 
 ## Limitations
@@ -291,5 +298,5 @@ During implementation some decisions had to be made:
   entities exposed in your API/published language. You can use [chimney](https://github.com/scalalandio/chimney)
   for turning public instances to and from internal instances,
 * types sometimes confuse compiler, so while it can derive something like `shapeless.Generic[TicketF[Id, Id]]`,
-  it has issues finding `Generic.Aux`, so doobie sometimes get's confused - `QuasiAuto` let you provide
+  it has issues finding `Generic.Aux`, so Doobie sometimes get's confused - `QuasiAuto` let you provide
   the right values explicitly, so that the derivation is not blocked by such silly issue. 
