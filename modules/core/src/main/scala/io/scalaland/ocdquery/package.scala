@@ -15,11 +15,11 @@ package object ocdquery {
     def asSelect: Fragment =
       fragments.keysIterator.map(column => Fragment.const(column.name)).reduce(_ ++ fr"," ++ _)
     def asAnd: Fragment =
-      fragments.map { case (column, value) => Fragment.const(s"$column = ") ++ value }.reduce(_ ++ fr"AND" ++ _)
+      fragments.map { case (column, value) => Fragment.const(s"${column.name} = ") ++ value }.reduce(_ ++ fr"AND" ++ _)
     def asOr: Fragment =
-      fragments.map { case (column, value) => Fragment.const(s"$column = ") ++ value }.reduce(_ ++ fr"OR" ++ _)
+      fragments.map { case (column, value) => Fragment.const(s"${column.name} = ") ++ value }.reduce(_ ++ fr"OR" ++ _)
     def asSet: Fragment =
-      fragments.map { case (column, value) => Fragment.const(s"$column =") ++ value }.reduce(_ ++ fr"," ++ _)
+      fragments.map { case (column, value) => Fragment.const(s"${column.name} =") ++ value }.reduce(_ ++ fr"," ++ _)
     def asValues: Fragment =
       fragments.valuesIterator.reduce(_ ++ fr"," ++ _)
   }

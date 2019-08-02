@@ -8,7 +8,7 @@ import com.softwaremill.quicklens._
 import doobie._
 import doobie.implicits._
 import doobie.h2.implicits._
-import io.scalaland.ocdquery.example.{ TicketF, TicketRepo }
+import example.{ TicketF, TicketRepo }
 import io.scalaland.ocdquery.sql._
 import org.specs2.mutable.Specification
 

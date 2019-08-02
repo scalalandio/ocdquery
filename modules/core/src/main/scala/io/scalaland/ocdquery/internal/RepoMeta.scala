@@ -21,7 +21,7 @@ sealed trait RepoMeta[C, E, U, N] {
   val fromEntity: Entity => ListMap[ColumnName[Any], Fragment]
   val fromUpdate: Update => ListMap[ColumnName[Any], Fragment]
 
-  lazy val * : Fragment = Fragment.const(columnNames.mkString(", "))
+  lazy val * : Fragment = Fragment.const(columnNames.map(_.name).mkString(", "))
 }
 
 sealed trait UnnamedRepoMeta[C, E, U, N] extends RepoMeta[C, E, U, N] { meta =>

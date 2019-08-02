@@ -5,7 +5,7 @@ import java.time.LocalDate
 import cats.implicits._
 import doobie._
 import doobie.implicits._
-import io.scalaland.ocdquery.example.{ TicketF, TicketRepo }
+import example.{ TicketF, TicketRepo }
 import io.scalaland.ocdquery.sql._
 import org.specs2.mutable.Specification
 
@@ -99,17 +99,17 @@ class FetcherSpec extends Specification with WithH2Database {
 
         all1 <- join1
           .fetch { cols =>
-            (cols._1.name `=` "TestFetcher") and (cols._1.surname `=` "TestFetcher") and
-              (cols._2.name `=` "TestFetcher") and (cols._2.surname `=` "TestFetcher")
+            (cols._1.surname `=` "TestFetcher") and (cols._1.from `=` "TestFetcher") and (cols._1.to `=` "TestFetcher") and
+              (cols._2.surname `=` "TestFetcher") and (cols._2.from `=` "TestFetcher") and (cols._2.to `=` "TestFetcher")
           }
           .to[List]
         _ = all1.map(_._1.name).toSet === names.toSet
         _ = all1.map(_._2.name).toSet === names.toSet
         all2 <- join2
           .fetch { cols =>
-            (cols._1.name `=` "TestFetcher") and (cols._1.surname `=` "TestFetcher") and
-              (cols._2.name `=` "TestFetcher") and (cols._2.surname `=` "TestFetcher") and
-              (cols._3.name `=` "TestFetcher") and (cols._3.surname `=` "TestFetcher")
+            (cols._1.surname `=` "TestFetcher") and (cols._1.from `=` "TestFetcher") and (cols._1.to `=` "TestFetcher") and
+              (cols._2.surname `=` "TestFetcher") and (cols._2.from `=` "TestFetcher") and (cols._2.to `=` "TestFetcher") and
+              (cols._3.surname `=` "TestFetcher") and (cols._3.from `=` "TestFetcher") and (cols._3.to `=` "TestFetcher")
           }
           .to[List]
         _ = all2.map(_._1.name).toSet === names.toSet
@@ -119,9 +119,9 @@ class FetcherSpec extends Specification with WithH2Database {
         firstHalf <- join2.fetch
           .withSort(_._1.name, Sort.Ascending)
           .withLimit(5) { cols =>
-            (cols._1.name `=` "TestFetcher") and (cols._1.surname `=` "TestFetcher") and
-              (cols._2.name `=` "TestFetcher") and (cols._2.surname `=` "TestFetcher") and
-              (cols._3.name `=` "TestFetcher") and (cols._3.surname `=` "TestFetcher")
+            (cols._1.surname `=` "TestFetcher") and (cols._1.from `=` "TestFetcher") and (cols._1.to `=` "TestFetcher") and
+              (cols._2.surname `=` "TestFetcher") and (cols._2.from `=` "TestFetcher") and (cols._2.to `=` "TestFetcher") and
+              (cols._3.surname `=` "TestFetcher") and (cols._3.from `=` "TestFetcher") and (cols._3.to `=` "TestFetcher")
           }
           .to[List]
         _ = firstHalf.map(_._1.name) === names.take(5)
@@ -129,9 +129,9 @@ class FetcherSpec extends Specification with WithH2Database {
         _ = firstHalf.map(_._3.name) === names.take(5)
         secondHalf <- join2.fetch
           .withOffset(5) { cols =>
-            (cols._1.name `=` "TestFetcher") and (cols._1.surname `=` "TestFetcher") and
-              (cols._2.name `=` "TestFetcher") and (cols._2.surname `=` "TestFetcher") and
-              (cols._3.name `=` "TestFetcher") and (cols._3.surname `=` "TestFetcher")
+            (cols._1.surname `=` "TestFetcher") and (cols._1.from `=` "TestFetcher") and (cols._1.to `=` "TestFetcher") and
+              (cols._2.surname `=` "TestFetcher") and (cols._2.from `=` "TestFetcher") and (cols._2.to `=` "TestFetcher") and
+              (cols._3.surname `=` "TestFetcher") and (cols._3.from `=` "TestFetcher") and (cols._3.to `=` "TestFetcher")
           }
           .to[List]
       } yield secondHalf.map(_._1.name)

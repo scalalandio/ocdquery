@@ -1,4 +1,4 @@
-package io.scalaland.ocdquery.example
+package example
 
 import java.time.LocalDate
 import java.util.UUID

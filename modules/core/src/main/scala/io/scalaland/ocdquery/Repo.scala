@@ -1,10 +1,10 @@
 package io.scalaland.ocdquery
 
+import cats.Id
 import cats.implicits._
 import doobie._
 import doobie.implicits._
 import io.scalaland.ocdquery.internal._
-import shapeless.Id
 
 class Repo[C, E: Read, U: Empty, N](val meta: UnnamedRepoMeta[C, E, U, N]) { repo =>
   import meta._
@@ -30,9 +30,10 @@ class Repo[C, E: Read, U: Empty, N](val meta: UnnamedRepoMeta[C, E, U, N]) { rep
     def apply(filter: Names => Filter): Query0[Entity] = {
       val where = unnamedColForFilter(filter).fragment
       val orderBy = sort match {
-        case Some((columnf, Sort.Ascending))  => Fragment.const(s"ORDER BY ${unnamedColForNames[Id](columnf)} ASC")
-        case Some((columnf, Sort.Descending)) => Fragment.const(s"ORDER BY ${unnamedColForNames[Id](columnf)} DESC")
-        case None                             => Fragment.empty
+        case Some((columnf, Sort.Ascending)) => Fragment.const(s"ORDER BY ${unnamedColForNames[Id](columnf).name} ASC")
+        case Some((columnf, Sort.Descending)) =>
+          Fragment.const(s"ORDER BY ${unnamedColForNames[Id](columnf).name} DESC")
+        case None => Fragment.empty
       }
       val offsetFr = offset.map(offset => Fragment.const(s"OFFSET $offset")).getOrElse(Fragment.empty)
       val limitFr  = limit.map(limit => Fragment.const(s"LIMIT $limit")).getOrElse(Fragment.empty)
