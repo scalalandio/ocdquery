@@ -1,12 +1,12 @@
 package io.scalaland.ocdquery.internal
 
-import shapeless._
+import magnolia._
+import scala.language.experimental.macros
 
 import scala.annotation.implicitNotFound
 
 @implicitNotFound("Cannot found Empty[${A}]")
 trait Empty[A] {
-
   def get(): A
 }
 
@@ -14,10 +14,15 @@ object Empty {
 
   def apply[A](implicit empty: Empty[A]): Empty[A] = empty
 
-  implicit val hnilEmpty: Empty[HNil] = () => HNil
+  type Typeclass[T] = Empty[T]
 
-  implicit def hconsEmpty[H, T <: HList](implicit h: Empty[H], t: Empty[T]): Empty[H :: T] = () => h.get() :: t.get()
+  def combine[T](caseClass: CaseClass[Typeclass, T]): Typeclass[T] =
+    () =>
+      caseClass.construct { param =>
+        param.typeclass.get()
+    }
 
-  implicit def productEmpty[P, Rep <: HList](implicit gen: Generic.Aux[P, Rep], empty: Empty[Rep]): Empty[P] =
-    () => gen.from(empty.get())
+  def dispatch[T](sealedTrait: SealedTrait[Typeclass, T]): Typeclass[T] = ???
+
+  implicit def gen[T]: Typeclass[T] = macro Magnolia.gen[T]
 }

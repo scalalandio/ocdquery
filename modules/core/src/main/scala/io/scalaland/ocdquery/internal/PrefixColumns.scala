@@ -1,7 +1,8 @@
 package io.scalaland.ocdquery.internal
 
 import io.scalaland.ocdquery.ColumnName
-import shapeless._
+import magnolia._
+import scala.language.experimental.macros
 
 trait PrefixColumns[C] {
 
@@ -12,14 +13,18 @@ object PrefixColumns {
 
   @inline def apply[C](implicit p: PrefixColumns[C]): PrefixColumns[C] = p
 
-  implicit val hnilPrefixColumns: PrefixColumns[HNil] = (cols, _) => cols
+  type Typeclass[T] = PrefixColumns[T]
 
-  implicit def hconsPrefixColumns[H, T <: HList](
-    implicit tPrefix: PrefixColumns[T]
-  ): PrefixColumns[ColumnName[H] :: T] =
-    (cols, prefix) => ColumnName[H](prefix + "." + cols.head.name) :: tPrefix.prepend(cols.tail, prefix)
+  def combine[T](caseClass: CaseClass[Typeclass, T]): Typeclass[T] =
+    (columns, prefix) =>
+      caseClass.construct { param =>
+        param.typeclass.prepend(param.dereference(columns), prefix)
+    }
 
-  implicit def productPrefixColumns[P, PRep <: HList](implicit pGen: Generic.Aux[P, PRep],
-                                                      pPrefix:       PrefixColumns[PRep]): PrefixColumns[P] =
-    (cols, prefix) => pGen.from(pPrefix.prepend(pGen.to(cols), prefix))
+  def dispatch[T](sealedTrait: SealedTrait[Typeclass, T]): Typeclass[T] = ???
+
+  implicit def gen[T]: Typeclass[T] = macro Magnolia.gen[T]
+
+  implicit def prependColumnName[A]: PrefixColumns[ColumnName[A]] =
+    (column, prefix) => ColumnName[A](prefix + "." + column.name)
 }

@@ -25,6 +25,7 @@ object Dependencies {
   val doobie             = "org.tpolecat"                 %% "doobie-core"               % doobieVersion
   val doobieH2           = "org.tpolecat"                 %% "doobie-h2"                 % doobieVersion
   val doobieSpecs2       = "org.tpolecat"                 %% "doobie-specs2"             % doobieVersion
+  val magnolia           = "com.propensive"               %% "magnolia"                  % "0.11.0"
   val shapeless          = "com.chuusai"                  %% "shapeless"                 % "2.3.3"
   val quicklens          = "com.softwaremill.quicklens"   %% "quicklens"                 % "1.4.12"
   // testing
@@ -43,7 +44,7 @@ trait Dependencies {
   // resolvers
   val commonResolvers = resolvers
 
-  val mainDeps = Seq(doobie, shapeless)
+  val mainDeps = Seq(doobie, magnolia, shapeless)
 
   val testDeps = Seq(doobieH2, doobieSpecs2, spec2Core, spec2Mock, spec2Scalacheck, quicklens)
 

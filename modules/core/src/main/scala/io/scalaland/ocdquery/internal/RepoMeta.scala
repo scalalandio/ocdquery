@@ -129,9 +129,9 @@ object RepoMeta {
     columns:   Columns
   )(
     implicit cols: AllColumns[Columns],
-    forCreate:     FragmentsForCreate[Create, Columns],
-    forEntity:     FragmentsForEntity[Entity, Columns],
-    forUpdate:     FragmentsForUpdate[Select, Columns],
+    forCreate:     ColumnNameFragmentList[Create, Columns],
+    forEntity:     ColumnNameFragmentList[Entity, Columns],
+    forUpdate:     ColumnNameFragmentList[Select, Columns],
     prefixColumns: PrefixColumns[Columns]
   ): UnnamedRepoMeta[Create, Entity, Select, Columns] =
     new UnnamedRepoMeta[Create, Entity, Select, Columns] {
@@ -140,11 +140,11 @@ object RepoMeta {
       val columnNames: ListSet[ColumnName[Any]] = ListSet(cols.getList(columns).toSeq: _*)
 
       val fromCreate: Create => ListMap[ColumnName[Any], Fragment] = created =>
-        ListMap(forCreate.toFragments(created, columns).toSeq: _*)
+        ListMap(forCreate(created, columns).toSeq: _*)
       val fromEntity: Entity => ListMap[ColumnName[Any], Fragment] = entity =>
-        ListMap(forEntity.toFragments(entity, columns).toSeq: _*)
+        ListMap(forEntity(entity, columns).toSeq: _*)
       val fromUpdate: Update => ListMap[ColumnName[Any], Fragment] = select =>
-        ListMap(forUpdate.toFragments(select, columns).toSeq: _*)
+        ListMap(forUpdate(select, columns).toSeq: _*)
 
       def unnamedColForNames[F[_]: Functor](f: Names => F[ColumnName[Any]],
                                             prefix: Option[String]): F[ColumnName[Any]] =
@@ -158,9 +158,8 @@ object RepoMeta {
     columns:   ValueF[ColumnName]
   )(
     implicit cols: AllColumns[ValueF[ColumnName]],
-    forCreate:     FragmentsForCreate[ValueF[Id], ValueF[ColumnName]],
-    forEntity:     FragmentsForEntity[ValueF[Id], ValueF[ColumnName]],
-    forUpdate:     FragmentsForUpdate[ValueF[Updatable], ValueF[ColumnName]],
+    forEntity:     ColumnNameFragmentList[ValueF[Id], ValueF[ColumnName]],
+    forUpdate:     ColumnNameFragmentList[ValueF[Updatable], ValueF[ColumnName]],
     prefixColumns: PrefixColumns[ValueF[ColumnName]]
   ): UnnamedRepoMeta[ValueF[Id], ValueF[Id], ValueF[Updatable], ValueF[ColumnName]] =
     instant[ValueF[Id], ValueF[Id], ValueF[Updatable], ValueF[ColumnName]](tableName, columns)
@@ -170,9 +169,9 @@ object RepoMeta {
     columns:   EntityF[ColumnName, ColumnName]
   )(
     implicit cols: AllColumns[EntityF[ColumnName, ColumnName]],
-    forCreate:     FragmentsForCreate[EntityF[Id, UnitF], EntityF[ColumnName, ColumnName]],
-    forEntity:     FragmentsForEntity[EntityF[Id, Id], EntityF[ColumnName, ColumnName]],
-    forUpdate:     FragmentsForUpdate[EntityF[Updatable, Updatable], EntityF[ColumnName, ColumnName]],
+    forCreate:     ColumnNameFragmentList[EntityF[Id, UnitF], EntityF[ColumnName, ColumnName]],
+    forEntity:     ColumnNameFragmentList[EntityF[Id, Id], EntityF[ColumnName, ColumnName]],
+    forUpdate:     ColumnNameFragmentList[EntityF[Updatable, Updatable], EntityF[ColumnName, ColumnName]],
     prefixColumns: PrefixColumns[EntityF[ColumnName, ColumnName]]
   ): UnnamedRepoMeta[EntityF[Id, UnitF], EntityF[Id, Id], EntityF[Updatable, Updatable], EntityF[ColumnName,
                                                                                                  ColumnName]] =

@@ -108,9 +108,8 @@ object Repo {
       columns:   ValueColumn
     )(
       implicit cols: AllColumns[ValueColumn],
-      forCreate:     FragmentsForCreate[ValueCreate, ValueColumn],
-      forEntity:     FragmentsForEntity[Value, ValueColumn],
-      forUpdate:     FragmentsForUpdate[ValueUpdate, ValueColumn],
+      forEntity:     ColumnNameFragmentList[Value, ValueColumn],
+      forUpdate:     ColumnNameFragmentList[ValueUpdate, ValueColumn],
       prefixColumns: PrefixColumns[ValueColumn],
       read:          Read[Value],
       emptySelect:   Empty[ValueUpdate]
@@ -155,9 +154,9 @@ object Repo {
       columns:   EntityColumn
     )(
       implicit cols: AllColumns[EntityColumn],
-      forCreate:     FragmentsForCreate[EntityCreate, EntityColumn],
-      forEntity:     FragmentsForEntity[Entity, EntityColumn],
-      forUpdate:     FragmentsForUpdate[EntityUpdate, EntityColumn],
+      forCreate:     ColumnNameFragmentList[EntityCreate, EntityColumn],
+      forEntity:     ColumnNameFragmentList[Entity, EntityColumn],
+      forUpdate:     ColumnNameFragmentList[EntityUpdate, EntityColumn],
       prefixColumns: PrefixColumns[EntityColumn],
       read:          Read[Entity],
       emptySelect:   Empty[EntityUpdate]
