@@ -1,7 +1,7 @@
 import cats.Id
 import com.softwaremill.quicklens._
 import doobie.h2.implicits._
-import io.scalaland.ocdquery.{ AsNameOps, DefaultColumnNames, QuasiAuto, Repo }
+import io.scalaland.ocdquery._
 
 package object example {
 
@@ -11,9 +11,8 @@ package object example {
       QuasiAuto.read(shapeless.Generic[TicketF[Id, Id]])
 
     Repo.forEntity[TicketF](
-      "tickets".tableName, {
-        DefaultColumnNames.forEntity[TicketF].modify(_.from).setTo("from_".columnName)
-      }
+      "tickets".tableName,
+      DefaultColumnNames.forEntity[TicketF].modify(_.from).setTo("from_".columnName)
     )
   }
 }

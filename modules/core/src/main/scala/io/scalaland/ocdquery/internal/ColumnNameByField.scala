@@ -6,7 +6,11 @@ import magnolia._
 import scala.annotation.implicitNotFound
 import scala.language.experimental.macros
 
-@implicitNotFound("")
+@implicitNotFound(
+  "Couldn't find/derive ColumnNameByField[${Names}]\n" +
+    " - make sure that all fields are wrapped in obligatory or selectable F[_], " +
+    "so that ${Names} is made of ColumnNames only"
+)
 trait ColumnNameByField[Names] {
   def apply(names: Names): List[(String, ColumnName[Any])]
 }

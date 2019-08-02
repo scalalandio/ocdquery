@@ -7,7 +7,7 @@ import scala.annotation.implicitNotFound
 @implicitNotFound(
   "Couldn't find/derive AllColumns[${Names}]\n" +
     " - make sure that all fields are wrapped in obligatory or selectable F[_], " +
-    "so that ${Names} is made of Strings only"
+    "so that ${Names} is made of ColumnNames only"
 )
 trait AllColumns[Names] {
   def getList(names: Names): List[ColumnName[Any]]

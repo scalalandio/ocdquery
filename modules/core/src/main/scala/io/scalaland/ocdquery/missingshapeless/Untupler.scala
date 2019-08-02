@@ -2,6 +2,9 @@ package io.scalaland.ocdquery.missingshapeless
 
 import shapeless._
 
+/**
+  * The opposite of shapeless.ops.hlist.Tupler that I was sorely missing.
+  */
 trait Untupler[L <: HList] {
   type In
   def apply(in: In): L

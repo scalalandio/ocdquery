@@ -2,11 +2,18 @@ package io.scalaland.ocdquery.internal
 
 import io.scalaland.ocdquery.ColumnName
 import magnolia._
+
+import scala.annotation.implicitNotFound
 import scala.language.experimental.macros
 
-trait PrefixColumns[C] {
+@implicitNotFound(
+  "Couldn't find/derive PrefixColumns[${Names}]\n" +
+    " - make sure that all fields are wrapped in obligatory or selectable F[_], " +
+    "so that ${Names} is correctly substituted with ColumnName"
+)
+trait PrefixColumns[Names] {
 
-  def prepend(columns: C, prefix: String): C
+  def prepend(columns: Names, prefix: String): Names
 }
 
 object PrefixColumns {

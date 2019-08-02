@@ -2,6 +2,10 @@ package io.scalaland.ocdquery.missingshapeless
 
 import shapeless._
 
+/*
+ * Appends B to tuple A, so that you can build a tuple incrementally
+ *  and don't end up with a nested tuple monstrocity
+ */
 trait TupleAppender[A, B] {
   type Out
   def append(a:   A, b: B): Out
@@ -15,6 +19,8 @@ object TupleAppender extends TupleAppenderLowPriorityImplicit {
   type Aux[A, B, C] = TupleAppender[A, B] { type Out = C }
 
   // scalastyle:off
+
+  // unrolled, because it only handles 22 cases, so why use slow shapeless?
 
   implicit def appender2[A, B, Add]: TupleAppender.Aux[(A, B), Add, (A, B, Add)] =
     new TupleAppender[(A, B), Add] {

@@ -10,10 +10,12 @@ Doobie queries generated using higher-kinded data.
 
 1. add in your sbt:
 ```scala
-libraryDependencies += "io.scalaland" %% "ocdquery-core" % "0.3.0"
+libraryDependencies += "io.scalaland" %% "ocdquery-core" % "0.4.0"
 ```
+(and maybe some optica library like [Quicklens](https://github.com/softwaremill/quicklens)
+or [Monocle](https://github.com/julien-truffaut/Monocle))
 
-2. create kigner-kinded data representation:
+2. create higner-kinded data representation:
 
 ```scala
 import java.time.LocalDate
@@ -32,35 +34,25 @@ final case class TicketF[F[_], C[_]](
 3. create a repository:
 
 ```scala
-import doobie._
-import doobie.implicits._
+import cats.Id
+import com.softwaremill.quicklens._
+import doobie.h2.implicits._
 import io.scalaland.ocdquery._
 
 // only have to do it once!
-object TicketRepo extends Repo(
-   RepoMeta.forEntity("tickets",
-                      TicketF[ColumnNameF, ColumnNameF](
-                        id      = "id",
-                        name    = "name",
-                        surname = "surname",
-                        from    = "from_",
-                        to      = "to",
-                        date    = "date"
-                      ))
-)
-
-// but you can make your life even easier with a bit of default magic
-// and lenses (they don't mess up type inference like .copy does)
-
-// (lenses, not provided, pick and add them on your own!)
-// (both monocle with macro syntax and quicklenses are nice!)
-import com.softwaremill.quicklens._
-
-object TicketRepo extends Repo(
-   RepoMeta.forEntity("tickets",
-                      DefaultColumnNames.forEntity[TicketF].modify(_.from).setTo("from_")
-   )
-)
+val TicketRepo: Repo.EntityRepo[TicketF] = {
+  // I have no idea why shapeless cannot find this Generic on its own :/
+  // if you figure it out, please PR!!!
+  implicit val ticketRead: doobie.Read[Repo.ForEntity[TicketF]#Entity] =
+    QuasiAuto.read(shapeless.Generic[TicketF[Id, Id]])
+    
+  Repo.forEntity[TicketF](
+    "tickets".tableName,
+    // I suggest using quicklens or monocle's extension methods
+    // as they are more reliable than .copy
+    DefaultColumnNames.forEntity[TicketF].modify(_.from).setTo("from_".columnName)
+  )
+}
 ```
 
 4. generate queries
@@ -68,72 +60,35 @@ object TicketRepo extends Repo(
 ```scala
 // build these in you services with type safety!
 
-TicketRepo.update(
-  select = TicketF[Selectable, Selectable](
-    id       = Skipped,
-    name:    = Fixed("John"),
-    surname: = Fixed("Smith"),
-    from:    = Skipped,
-    to:      = Skipped,
-    date:    = Skipped
-  ),
-  update = TicketF[Selectable, Selectable](
-    id       = Skipped,
-    name:    = Skipped,
-    surname: = Skipped,
-    from:    = Skipped,
-    to:      = Skipped,
-    date:    = Fixed(LocalDate.now)
-  )
+TicketRepo.insert(
+  // no need to pass "empty" fields like "id = Unit"!
+  Create.fromTuple(("John", "Smith", "London", "Paris", LocalDate.now))
 ).run
 
-TicketRepo.fetch(
-  select = TicketF[Selectable, Selectable](
-    id       = Skipped,
-    name:    = Skipped,
-    surname: = Skipped,
-    from:    = Fixed("London"),
-    to:      = Skipped,
-    date:    = Skipped
-  ),
-  sort = Some("name" -> Sort.Ascending),
-  limit = Some(5)
-).to[List]
+import io.scalaland.ocdquery.sql._ // common filter syntax like `=`, `<>`
 
-// or (with defaults and lenses)
-
-// (lenses, not provided, pick and add them on your own!)
-import com.softwaremill.quicklens._
-
-TicketRepo.update(
-  select = TicketRepo.emptySelect
-    .modify(_.name).setTo("John")
-    .modify(_.surname).setTo("Smith"),
-  update = TicketRepo.emptySelect
-    .modify(_.data).setTo(LocalDate.now)
+TicketRepo.update.withFilter { columns =>
+  (columns.name `=` "John") and (columns.surname `=` "Smith")
+}(
+  TicketRepo.emptyUpdate.modify(_.data).setTo(LocalDate.now)
 ).run
 
-TicketRepo.fetch(
-  select = TicketRepo.emptySelect
-    .modify(_.from).setTo("London"),
-  sort = Some("name" -> Sort.Ascending),
-  limit = Some(5)
-).to[List]
+TicketRepo.fetch.withSort(_.name, Sort.Ascending).withLimit(5) {
+ _.from `=` "London"
+}.to[List]
+
+TicketRepo.delete(_.id `=` deletedId).run
 ```
 
 5. perform even joins returning tuples of entities:
 
 ```scala
-import TicketRepo.meta.Names
-
 val joiner = TicketRepo
-  .join(TicketRepo, (TicketRepo.col(_.id), TicketRepo.col(_.id)))
-  .join(TicketRepo, (_._2.id, TicketRepo.col(_.id)))
-
-joiner.fetch((filter1, filter2, filter2),
-             sort = Some(((_: (Names, Names, Names))._1.name) -> Sort.Ascending),
-             offset = None,
-             limit = Some(5)).to[List] // ConnectionIO[(Entity, Entity, Entity)]
+  .join(TicketRepo).on(_._1.id, _._2.id) // after .join() we have a tuple!
+  .join(TicketRepo).on(_._2.id, _._3.id) // and now triple!
+  .fetch.withSort(_._1.name, Sort.Ascending).withLimit(5) { columns =>
+    columns._1.name `=` "John"
+  }.to[List] // ConnectionIO[(Entity, Entity, Entity)]
 ```
 
 ## How does it exactly works?
@@ -269,9 +224,9 @@ And we can do this! The idea is called higher-kinded data and looks like this:
 import java.time.LocalDate
 import java.util.UUID
 
-type Id[A] = A
-type UnitF[A] = Unit
-type ColumnNameF[A] = String
+type Id[A] = A // turns 
+type UnitF[A] = Unit // make fields not available at creation "disappear" 
+case class ColumnName[A](name: String) // preserves name of column in DB and its type
 
 // F is for normal columns which should be available in some what for all lifecycle
 // C is for these that should be empty during creation and available from then on
@@ -286,8 +241,8 @@ final case class TicketF[F[_], C[_]](
 
 type TicketCreate  = TicketF[Id, UnitF] // C[_] fields are Units, the rest as of type inside of F[_]
 type Ticket        = TicketF[Id, Id] // all fields are of the type inside of F[_]/C[_]
-type TicketFilter  = TicketF[Option, Option] // all fields are of Option of inside of F[_]/C[_]
-type TicketColumns = TicketF[ColumnNameF, ColumnNameF] // all fields are Strings
+type TicketUpdate  = TicketF[Option, Option] // all fields are of Option of inside of F[_]/C[_]
+type TicketColumns = TicketF[ColumnName, ColumnName] // all fields are column names
 ```
 
 Higher-kinded data is data with higher-kinded types as type parameters.
@@ -299,7 +254,7 @@ basic CRUD queries for it.
 
 During implementation some decisions had to be made:
 
- * instead of `Option` we use our own `Selectable` type which could be `Fixed(to)` or `Skipped `
+ * instead of `Option` we use our own `Updatable` type which could be `UpdatedTo(to)` or `Skip`
    to avoid issues during derivation that would occur if you had e.g. `O[Option[String]]`
    as one of field types,
  * derivation metadata is stored inside `RepoMeta[EntityF]` instance - you can reuse
@@ -311,66 +266,18 @@ During implementation some decisions had to be made:
 
    val ticketRepoMeta =
       RepoMeta.forEntity("tickets",
-                         TicketF[ColumnNameF, ColumnNameF](
-                           id      = "id",
-                           name    = "name",
-                           surname = "surname",
-                           from    = "from_",
-                           to      = "to",
-                           date    = "date"
-                         ))
-   ```
- * if however default way suit your taste feel free to use `Repo` implementation!
-   ```scala
-   object TicketRepo extends Repo(ticketRepoMeta)
+                         DefaultColumnNames.forEntity[TicketF].modify(_.from).setTo("from_".columnName))
    
-   val ticketCreate = TicketF[Id, UnitF](
-     id      = (),
-     name    = "John",
-     surname = "Smith",
-     from    = "New York",
-     to      = "London",
-     date    = LocalDate.now()
-   )
-  
-   val byName = TicketF[Selectable, Selectable](
-     id      = Skipped,
-     name    = Fixed(ticketCreate.name),
-     surname = Fixed(ticketCreate.surname),
-     from    = Skipped,
-     to      = Skipped,
-     date    = Skipped
-   )
-
-   val update = TicketF[Selectable, Selectable](
-     id      = Skipped,
-     name    = Fixed("Jane"),
-     surname = Skipped,
-     from    = Fixed("London"),
-     to      = Fixed("New York"),
-     date    = Skipped
-   )
-   
-   for {
-     // that's how you can insert data
-     _ <- TicketRepo.insert(ticketCreate).run
-     // that's how you can fetch existing data
-     ticket <- TicketRepo.fetch(byName).unique
-     // that's how you can update existing data
-     _ <- TicketRepo.update(byName, update).run
-     updatedTicket <- TicketRepo.fetch(fetch).unique
-     // this is how you can delete existing data
-     _ <- TicketRepo.delete(byName).run
-   } yield ()
+   val ticketRepo = new EntityRepo(ticketRepoMeta)
    ```
  * to avoid writing `EntityF[Id, Id]`, `EntityF[Selectable, Selectable]` and `EntityF[Id, UnitF]`
    manually, some type aliases were introduced:
    ```scala
    import io.scalaland.ocdquery._
 
-   type TicketCreate = TicketRepo.meta.Create
-   type Ticket       = TicketRepo.meta.Entity
-   type TicketSelect = TicketRepo.meta.Select
+   type TicketCreate = Repo.ForEntity[TicketF]#EntityCreate
+   type Ticket       = Repo.ForEntity[TicketF]#Entity
+   type TicketUpdate = Repo.ForEntity[TicketF]#EntityUpdate
    ```
 
 ## Limitations
@@ -382,4 +289,7 @@ During implementation some decisions had to be made:
   define default values like e.g. `None`/`Skipped` for optional fields. So use them
   internally, as entities to work with your database and separate them from
   entities exposed in your API/published language. You can use [chimney](https://github.com/scalalandio/chimney)
-  for turning public instances to and from internal instances.  
+  for turning public instances to and from internal instances,
+* types sometimes confuse compiler, so while it can derive something like `shapeless.Generic[TicketF[Id, Id]]`,
+  it has issues finding `Generic.Aux`, so doobie sometimes get's confused - `QuasiAuto` let you provide
+  the right values explicitly, so that the derivation is not blocked by such silly issue. 

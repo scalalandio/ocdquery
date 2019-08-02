@@ -3,9 +3,13 @@ package io.scalaland.ocdquery.internal
 import io.scalaland.ocdquery.missingshapeless.Untupler
 import shapeless._
 
-trait SkipUnit[C] {
+/*
+ * Used for figuring out the tuple version of a Create object but without Unit field,
+ * and then transforming that tuple into Create.
+ */
+trait SkipUnit[Create] {
   type SU
-  def from(skipped: SU): C
+  def from(skipped: SU): Create
 }
 
 object SkipUnit extends SkipUnitLowLevelImplicit {

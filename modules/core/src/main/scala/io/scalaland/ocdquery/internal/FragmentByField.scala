@@ -4,10 +4,17 @@ import doobie._
 import doobie.implicits._
 import io.scalaland.ocdquery.{ Skip, Updatable, UpdateTo }
 import magnolia.{ CaseClass, Magnolia, SealedTrait }
+
+import scala.annotation.implicitNotFound
 import scala.language.experimental.macros
 
-trait FragmentByField[T] {
-  def apply(t: T): List[(String, Fragment)]
+@implicitNotFound(
+  "Couldn't find/derive FragmentByField[${Values}]\n" +
+    " - make sure that all fields are wrapped in obligatory or selectable F[_], " +
+    "so that ${Values} is correctly substituted with Id/UnitF/ColumnName"
+)
+trait FragmentByField[Values] {
+  def apply(t: Values): List[(String, Fragment)]
 }
 
 object FragmentByField extends FragmentByFieldLowLevelImplicit {

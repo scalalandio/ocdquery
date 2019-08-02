@@ -1,11 +1,17 @@
 package io.scalaland.ocdquery
 
 import magnolia._
+
+import scala.annotation.implicitNotFound
 import scala.language.experimental.macros
 
-trait DefaultColumnNames[A] {
-
-  def get(): A
+@implicitNotFound(
+  "Couldn't find/derive DefaultColumnNames[${Names}]\n" +
+    " - make sure that all fields are wrapped in obligatory or selectable F[_], " +
+    "so that ${Names} is made of ColumnNames only"
+)
+trait DefaultColumnNames[Names] {
+  def get(): Names
 }
 
 object DefaultColumnNames {
@@ -22,7 +28,7 @@ object DefaultColumnNames {
   def combine[T](caseClass: CaseClass[Typeclass, T]): Typeclass[T] =
     () =>
       caseClass.construct { param =>
-        ColumnName(param.label)
+        ColumnName(param.label) // should run it only for classes with only ColumnNames anyway
     }
 
   def dispatch[T](sealedTrait: SealedTrait[Typeclass, T]): Typeclass[T] = ???
