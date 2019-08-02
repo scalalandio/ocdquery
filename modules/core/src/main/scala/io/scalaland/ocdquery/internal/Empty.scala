@@ -1,8 +1,9 @@
 package io.scalaland.ocdquery.internal
 
+import io.scalaland.ocdquery.{ Skip, Updatable }
 import magnolia._
-import scala.language.experimental.macros
 
+import scala.language.experimental.macros
 import scala.annotation.implicitNotFound
 
 @implicitNotFound("Cannot found Empty[${A}]")
@@ -25,4 +26,6 @@ object Empty {
   def dispatch[T](sealedTrait: SealedTrait[Typeclass, T]): Typeclass[T] = ???
 
   implicit def gen[T]: Typeclass[T] = macro Magnolia.gen[T]
+
+  implicit def empty[A]: Empty[Updatable[A]] = () => Skip
 }

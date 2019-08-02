@@ -1,7 +1,7 @@
 package io.scalaland.ocdquery
 
-import shapeless._
-import shapeless.labelled.FieldType
+import magnolia._
+import scala.language.experimental.macros
 
 trait DefaultColumnNames[A] {
 
@@ -17,15 +17,17 @@ object DefaultColumnNames {
     implicit default: DefaultColumnNames[EntityF[ColumnName, ColumnName]]
   ): EntityF[ColumnName, ColumnName] = default.get()
 
-  implicit val hnilCase: DefaultColumnNames[HNil] = () => HNil
+  type Typeclass[T] = DefaultColumnNames[T]
 
-  implicit def hconsCase[H, LH <: Symbol, T <: HList](
-    implicit label: Witness.Aux[LH],
-    tailDefault:    DefaultColumnNames[T]
-  ): DefaultColumnNames[FieldType[LH, ColumnName[H]] :: T] =
-    () => labelled.field[LH][ColumnName[H]](label.value.name.columnName[H]) :: tailDefault.get()
+  def combine[T](caseClass: CaseClass[Typeclass, T]): Typeclass[T] =
+    () =>
+      caseClass.construct { param =>
+        ColumnName(param.label)
+    }
 
-  implicit def productCase[P, Rep <: HList](implicit pGen: LabelledGeneric.Aux[P, Rep],
-                                            defaultRep:    DefaultColumnNames[Rep]): DefaultColumnNames[P] =
-    () => pGen.from(defaultRep.get())
+  def dispatch[T](sealedTrait: SealedTrait[Typeclass, T]): Typeclass[T] = ???
+
+  implicit def gen[T]: Typeclass[T] = macro Magnolia.gen[T]
+
+  implicit def columnName[A]: DefaultColumnNames[ColumnName[A]] = () => ???
 }
