@@ -39,6 +39,18 @@ class Fetcher[C, E: Read, U, N](val meta: NamedRepoMeta[C, E, U, N]) {
   }
   def fetch: Fetch = Fetch()
 
+  def count(filter: Names => Filter): Query0[Long] = {
+    val joinOn = joinedOn.map(fr"ON" ++ _).getOrElse(Fragment.empty)
+    val where  = fr"WHERE" ++ namedColForFilter(filter).fragment
+    (fr"SELECT COUNT(*) FROM" ++ table ++ joinOn ++ where).query[Long]
+  }
+
+  def exists(filter: Names => Filter): Query0[Boolean] = {
+    val joinOn = joinedOn.map(fr"ON" ++ _).getOrElse(Fragment.empty)
+    val where  = fr"WHERE" ++ namedColForFilter(filter).fragment
+    (fr"SELECT COUNT(*) > 0 FROM" ++ table ++ joinOn ++ where ++ fr"LIMIT 1").query[Boolean]
+  }
+
   def join[C1, E1, S1, N1, F1](repo2: Repo[C1, E1, S1, N1], joinType: JoinType = JoinType.Inner)(
     implicit
     cta: TupleAppender[C, C1],

@@ -43,6 +43,16 @@ class Repo[C, E: Read, U: Empty, N](val meta: UnnamedRepoMeta[C, E, U, N]) { rep
   }
   def fetch: Fetching = Fetching()
 
+  def count(filter: Names => Filter): Query0[Long] = {
+    val where = unnamedColForFilter(filter).fragment
+    (fr"SELECT COUNT(*) FROM" ++ table ++ fr"WHERE" ++ where).query[Long]
+  }
+
+  def exists(filter: Names => Filter): Query0[Boolean] = {
+    val where = unnamedColForFilter(filter).fragment
+    (fr"SELECT COUNT(*) > 0 FROM" ++ table ++ fr"WHERE" ++ where ++ fr"LIMIT 1").query[Boolean]
+  }
+
   case class Updating private[Repo] (filter: Option[Names => Filter] = None) {
 
     def withFilter(where: Names => Filter): Updating = copy(filter = Some(where))
