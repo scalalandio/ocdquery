@@ -6,7 +6,7 @@ lazy val root = project.root
   .setDescription("OCD Query build")
   .configureRoot
   .noPublish
-  .aggregate(core)
+  .aggregate(core, tests)
 
 lazy val core = project.from("core")
   .setName("ocdquery-core")
@@ -15,13 +15,21 @@ lazy val core = project.from("core")
   .configureModule
   .configureTests()
   .publish
-  .settings(addCompilerPlugin("io.tryp" % "splain" % "0.4.1" cross CrossVersion.patch))
   .settings(Compile / resourceGenerators += task[Seq[File]] {
     val file = (Compile / resourceManaged).value / "ocdquery-version.conf"
     IO.write(file, s"version=${version.value}")
     Seq(file)
   })
 
-addCommandAlias("fullTest", ";test;fun:test;it:test;scalastyle")
-addCommandAlias("fullCoverageTest", ";coverage;test;coverageReport;coverageAggregate;scalastyle")
+lazy val tests = project.from("tests")
+  .setName("ocdquery-tests")
+  .setDescription("Integration tests of ocdquery")
+  .setInitialImport()
+  .configureModule
+  .configureIntegrationTests(requiresFork = true)
+  .noPublish
+  .dependsOn(core)
+
+addCommandAlias("fullTest", ";test;it:test;scalastyle")
+addCommandAlias("fullCoverageTest", ";coverage;test;it:test;coverageReport;coverageAggregate;scalastyle")
 addCommandAlias("relock", ";unlock;reload;update;lock")

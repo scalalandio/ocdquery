@@ -1,10 +1,12 @@
 language:       scala
 scala:
-              - 2.12.8
+              - 2.12.9
 jdk:
               - openjdk8
               - oraclejdk8
 dist:           trusty
+services:
+              - docker
 cache:
   directories:
               - $HOME/.ivy2/cache
@@ -14,8 +16,11 @@ install:
               - sudo apt-get install zsh
               - sudo chmod +x scripts/*
               - scripts/sbt update
+before_script:
+              - docker-compose up -d
 script:         scripts/run-all-tests.sh
 after_script:
+              - docker-compose down --remove-orphans
               - scripts/prepare-test-results-for-ci.sh
               - find $HOME/.sbt -name "*.lock" | xargs rm
               - find $HOME/.ivy2 -name "ivydata-*.properties" | xargs rm

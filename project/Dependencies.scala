@@ -6,7 +6,7 @@ object Dependencies {
 
   // scala version
   val scalaOrganization = "org.scala-lang"
-  val scalaVersion      = "2.12.8"
+  val scalaVersion      = "2.12.9"
 
   // build tools version
   val scalaFmtVersion = "1.5.1"
@@ -24,6 +24,7 @@ object Dependencies {
   // functional libraries
   val doobie             = "org.tpolecat"                 %% "doobie-core"               % doobieVersion
   val doobieH2           = "org.tpolecat"                 %% "doobie-h2"                 % doobieVersion
+  val doobiePostgres     = "org.tpolecat"                 %% "doobie-postgres"           % doobieVersion
   val doobieSpecs2       = "org.tpolecat"                 %% "doobie-specs2"             % doobieVersion
   val magnolia           = "com.propensive"               %% "magnolia"                  % "0.11.0"
   val shapeless          = "com.chuusai"                  %% "shapeless"                 % "2.3.3"
@@ -46,7 +47,7 @@ trait Dependencies {
 
   val mainDeps = Seq(doobie, magnolia, shapeless)
 
-  val testDeps = Seq(doobieH2, doobieSpecs2, spec2Core, spec2Mock, spec2Scalacheck, quicklens)
+  val testDeps = Seq(doobieH2, doobiePostgres, doobieSpecs2, spec2Core, spec2Mock, spec2Scalacheck, quicklens)
 
   implicit final class ProjectRoot(project: Project) {
 
