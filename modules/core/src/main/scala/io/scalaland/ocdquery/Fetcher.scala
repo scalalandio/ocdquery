@@ -26,8 +26,8 @@ class Fetcher[C, E: Read, U, N](val meta: NamedRepoMeta[C, E, U, N]) {
 
     def apply(filter: Names => Filter): Query0[Entity] = {
       val orderBy = sort match {
-        case Some((columnf, Sort.Ascending))  => Fragment.const(s"ORDER BY ${namedColForNames[Id](columnf).name} ASC")
-        case Some((columnf, Sort.Descending)) => Fragment.const(s"ORDER BY ${namedColForNames[Id](columnf).name} DESC")
+        case Some((columnf, Sort.Ascending))  => fr"ORDER BY" ++ namedColForNames[Id](columnf).fragment ++ fr"ASC"
+        case Some((columnf, Sort.Descending)) => fr"ORDER BY" ++ namedColForNames[Id](columnf).fragment ++ fr"DESC"
         case None                             => Fragment.empty
       }
       val joinOn   = joinedOn.map(fr"ON" ++ _).getOrElse(Fragment.empty)

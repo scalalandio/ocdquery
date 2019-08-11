@@ -13,13 +13,13 @@ package object ocdquery {
   implicit class FragmentsOps(val fragments: ListMap[ColumnName[Any], Fragment]) extends AnyVal {
 
     def asSelect: Fragment =
-      fragments.keysIterator.map(column => Fragment.const(column.name)).reduce(_ ++ fr"," ++ _)
+      fragments.keysIterator.map(_.fragment).reduce(_ ++ fr"," ++ _)
     def asAnd: Fragment =
-      fragments.map { case (column, value) => Fragment.const(s"${column.name} = ") ++ value }.reduce(_ ++ fr"AND" ++ _)
+      fragments.map { case (column, value) => column.fragment ++ fr"=" ++ value }.reduce(_ ++ fr"AND" ++ _)
     def asOr: Fragment =
-      fragments.map { case (column, value) => Fragment.const(s"${column.name} = ") ++ value }.reduce(_ ++ fr"OR" ++ _)
+      fragments.map { case (column, value) => column.fragment ++ fr"=" ++ value }.reduce(_ ++ fr"OR" ++ _)
     def asSet: Fragment =
-      fragments.map { case (column, value) => Fragment.const(s"${column.name} =") ++ value }.reduce(_ ++ fr"," ++ _)
+      fragments.map { case (column, value) => column.fragment ++ fr"=" ++ value }.reduce(_ ++ fr"," ++ _)
     def asValues: Fragment =
       fragments.valuesIterator.reduce(_ ++ fr"," ++ _)
   }

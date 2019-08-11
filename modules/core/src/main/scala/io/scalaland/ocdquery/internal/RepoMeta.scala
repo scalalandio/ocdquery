@@ -21,7 +21,8 @@ sealed trait RepoMeta[C, E, U, N] {
   val fromEntity: Entity => ListMap[ColumnName[Any], Fragment]
   val fromUpdate: Update => ListMap[ColumnName[Any], Fragment]
 
-  lazy val * : Fragment = Fragment.const(columnNames.map(_.name).mkString(", "))
+  @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
+  lazy val * : Fragment = columnNames.map(_.fragment).reduce(_ ++ fr"," ++ _)
 }
 
 sealed trait UnnamedRepoMeta[C, E, U, N] extends RepoMeta[C, E, U, N] { meta =>
@@ -113,7 +114,7 @@ sealed trait NamedRepoMeta[C, E, U, N] extends RepoMeta[C, E, U, N] { meta0 =>
       def namedColForFilter(f: Names => Filter): Filter = meta0.namedColForFilter(f)
 
       val joinedOn: Option[Fragment] = {
-        val j = Fragment.const(namedColForNames[Id](left).name + " = " + namedColForNames[Id](right).name)
+        val j = namedColForNames[Id](left).fragment ++ fr"=" ++ namedColForNames[Id](right).fragment
         meta0.joinedOn match {
           case Some(j0) => Some(j0 ++ fr"AND" ++ j)
           case None     => Some(j)

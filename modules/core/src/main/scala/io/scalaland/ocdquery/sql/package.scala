@@ -6,15 +6,30 @@ import doobie.implicits._
 package object sql {
 
   // scalastyle:off
-  implicit class UniversalFilter[A](val columnName: ColumnName[A]) {
+  implicit class UniversalSqlFilter[A](val columnName: ColumnName[A]) {
 
     def `=`(otherColumn: ColumnName[A]): Filter =
-      () => Fragment.const(columnName.name) ++ fr"=" ++ Fragment.const(otherColumn.name)
-    def `<>`(otherColumn: ColumnName[A]): Filter =
-      () => Fragment.const(columnName.name) ++ fr"<>" ++ Fragment.const(otherColumn.name)
+      () => columnName.fragment ++ fr"=" ++ otherColumn.fragment
+    def <>(otherColumn: ColumnName[A]): Filter =
+      () => columnName.fragment ++ fr"<>" ++ otherColumn.fragment
 
-    def `=`(a:  A)(implicit param: Put[A]): Filter = () => Fragment.const(columnName.name) ++ fr"= $a"
-    def `<>`(a: A)(implicit param: Put[A]): Filter = () => Fragment.const(columnName.name) ++ fr"<> $a"
+    // TOD: move it to a type class(?)
+    def `=`(a: A)(implicit param: Put[A]): Filter = () => columnName.fragment ++ fr"= $a"
+    def <>(a:  A)(implicit param: Put[A]): Filter = () => columnName.fragment ++ fr"<> $a"
+
+    // TOD: move it to a type class(?)
+    @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
+    def in(values: A*)(implicit param: Put[A]): Filter =
+      () => fr"IN (" ++ (values.map(value => fr"$value").reduce(_ ++ fr"," ++ _)) ++ fr")"
+
+    def between(begin: A, end: A)(implicit filterable: BetweenFilterable[A]): Filter =
+      () => columnName.fragment ++ filterable.between(begin, end)
+    def notBetween(begin: A, end: A)(implicit filterable: BetweenFilterable[A]): Filter =
+      () => columnName.fragment ++ fr"NOT" ++ filterable.between(begin, end)
+
+    def like(pattern: String)(implicit filterable: LikeFilterable[A]): Filter =
+      () => columnName.fragment ++ filterable.like(pattern)
   }
+
   // scalastyle:on
 }

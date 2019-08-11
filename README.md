@@ -283,7 +283,7 @@ During implementation some decisions had to be made:
    ```scala
    implicit class MyNewFiltering(columnName: ColumnName[Int]) {
    
-     def <(number: Int): Filter = () => Fragment.const(columnName.name) ++ fr"< $number"
+     def <(number: Int): Filter = () => columnName.fragment ++ fr"< $number"
    }
    ```
 
