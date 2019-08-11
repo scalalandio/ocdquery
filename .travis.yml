@@ -17,6 +17,8 @@ install:
               - sudo chmod +x scripts/*
               - scripts/sbt update
 before_script:
+              - sudo service mysql stop
+              - sudo service postgresql stop
               - docker-compose up -d
 script:         scripts/run-all-tests.sh
 after_script:

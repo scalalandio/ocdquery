@@ -9,7 +9,7 @@ services:
       - POSTGRES_DB=ocdquery
     image: postgres:9.6
     ports:
-      - 5432
+      - 5432:5432
     healthcheck:
       test: pg_isready -d ocdquery -U ocdquery
       interval: 5s
@@ -23,8 +23,9 @@ services:
       - MYSQL_DATABASE=ocdquery
       - MYSQL_ROOT_PASSWORD=password
     image: mysql:8
+    command: ["--log_bin_trust_function_creators=1"]
     ports:
-      - 3306
+      - 3306:3306
     healthcheck:
       test: mysqladmin ping -h 127.0.0.1 -u $$MYSQL_USER --password=$$MYSQL_PASSWORD
       interval: 5s

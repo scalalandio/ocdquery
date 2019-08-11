@@ -24,11 +24,14 @@ object Dependencies {
   // functional libraries
   val doobie             = "org.tpolecat"                 %% "doobie-core"               % doobieVersion
   val doobieH2           = "org.tpolecat"                 %% "doobie-h2"                 % doobieVersion
+  val doobieHikari       = "org.tpolecat"                 %% "doobie-hikari"             % doobieVersion
   val doobiePostgres     = "org.tpolecat"                 %% "doobie-postgres"           % doobieVersion
   val doobieSpecs2       = "org.tpolecat"                 %% "doobie-specs2"             % doobieVersion
   val magnolia           = "com.propensive"               %% "magnolia"                  % "0.11.0"
   val shapeless          = "com.chuusai"                  %% "shapeless"                 % "2.3.3"
   val quicklens          = "com.softwaremill.quicklens"   %% "quicklens"                 % "1.4.12"
+  // db
+  val mysqlJDBC          = "mysql"                        %  "mysql-connector-java"      % "8.0.17"
   // testing
   val spec2Core          = "org.specs2"                   %% "specs2-core"               % specs2Version
   val spec2Mock          = "org.specs2"                   %% "specs2-mock"               % specs2Version
@@ -47,7 +50,8 @@ trait Dependencies {
 
   val mainDeps = Seq(doobie, magnolia, shapeless)
 
-  val testDeps = Seq(doobieH2, doobiePostgres, doobieSpecs2, spec2Core, spec2Mock, spec2Scalacheck, quicklens)
+  val testDeps = Seq(doobieH2, doobieHikari, doobiePostgres, doobieSpecs2, mysqlJDBC,
+                     spec2Core, spec2Mock, spec2Scalacheck, quicklens)
 
   implicit final class ProjectRoot(project: Project) {
 
