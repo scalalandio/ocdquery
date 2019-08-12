@@ -3,7 +3,7 @@ package io.scalaland.ocdquery
 import java.time.LocalDate
 
 import cats.Id
-import cats.implicits._
+import cats.implicits.{ catsSyntaxEq => _, _ }
 import com.softwaremill.quicklens._
 import doobie._
 import doobie.implicits._
@@ -71,7 +71,7 @@ final class RepoSpec extends Specification with WithH2Database {
           to      = "New York",
           date    = LocalDate.now().plusDays(5) // scalastyle:ignore
         )
-        update = TicketRepo.emptyUpdate
+        update = (TicketRepo.emptyUpdate)
           .modify(_.name)
           .setTo(expectedUpdated.name)
           .modify(_.surname)
@@ -116,6 +116,14 @@ final class RepoSpec extends Specification with WithH2Database {
           }
           .to[List]
         _ = all.map(_.name).toSet === names.toSet
+        count <- TicketRepo.count { cols =>
+          (cols.surname `=` "Test") and (cols.from `=` "Test") and (cols.to `=` "Test")
+        }.unique
+        _ = count === names.length
+        nonEmpty <- TicketRepo.exists { cols =>
+          (cols.surname `=` "Test") and (cols.from `=` "Test") and (cols.to `=` "Test")
+        }.unique
+        _ = nonEmpty === true
         firstHalf <- TicketRepo.fetch
           .withSort(_.name, Sort.Ascending)
           .withLimit(5) { cols =>

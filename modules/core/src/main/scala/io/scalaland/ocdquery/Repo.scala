@@ -2,11 +2,13 @@ package io.scalaland.ocdquery
 
 import cats.Id
 import cats.implicits._
-import doobie._
+import doobie.{ Update => _, _ }
 import doobie.implicits._
 import io.scalaland.ocdquery.internal._
 
-class Repo[C, E: Read, U: Empty, N](val meta: UnnamedRepoMeta[C, E, U, N]) { repo =>
+class Repo[Create, Entity: Read, Update: Empty, Names](val meta: UnnamedRepoMeta[Create, Entity, Update, Names]) {
+  repo =>
+
   import meta._
 
   val read: Read[Entity] = Read[Entity]
@@ -69,8 +71,8 @@ class Repo[C, E: Read, U: Empty, N](val meta: UnnamedRepoMeta[C, E, U, N]) { rep
   def join[C1, E1, S1, N1](
     repo2:    Repo[C1, E1, S1, N1],
     joinType: JoinType = JoinType.Inner
-  ): Fetcher[(C, C1), (E, E1), (U, S1), (N, N1)] = {
-    implicit val readEE1: Read[(E, E1)] = (read, repo2.read).mapN((e, e1) => e -> e1)
+  ): Fetcher[(Create, C1), (Entity, E1), (Update, S1), (Names, N1)] = {
+    implicit val readEE1: Read[(Entity, E1)] = (read, repo2.read).mapN((e, e1) => e -> e1)
     new Fetcher(repo.meta.as(RandomPrefix.next).join(repo2.meta.as(RandomPrefix.next), joinType))
   }
 

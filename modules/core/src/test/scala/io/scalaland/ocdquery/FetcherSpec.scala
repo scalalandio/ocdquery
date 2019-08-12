@@ -2,8 +2,7 @@ package io.scalaland.ocdquery
 
 import java.time.LocalDate
 
-import cats.implicits._
-import doobie._
+import cats.implicits.{ catsSyntaxEq => _, _ }
 import doobie.implicits._
 import example.{ TicketF, TicketRepo }
 import io.scalaland.ocdquery.sql._
@@ -25,28 +24,13 @@ class FetcherSpec extends Specification with WithH2Database {
 
   "Fetcher" should {
 
-    import TicketRepo.meta.Entity
-    type Double[A] = (A, A)
-    type Triple[A] = (A, A, A)
-
     val join1 = TicketRepo.join(TicketRepo).on(_._1.id, _._2.id)
     val join2 = join1.join(TicketRepo).on(_._2.id, _._3.id)
-
-    TicketRepo
-      .join(TicketRepo)
-      .on(_._1.id, _._2.id)
-      .join(TicketRepo)
-      .on(_._2.id, _._3.id)
-      .fetch { cols =>
-        (cols._1.name `=` "John") and (cols._1.surname `=` "Smith") and
-          (cols._2.name `=` "John") and (cols._2.surname `=` "Smith")
-      }
-      .to[List]
 
     "generate Fragments allowing you to perform basic CRUD operations" in {
       val createTicket = Create.entity[TicketF].fromTuple(("John", "Smith", "New York", "London", LocalDate.now()))
 
-      val test: ConnectionIO[(List[Double[Entity]], List[Triple[Entity]])] = for {
+      val test = for {
         // should generate ID within SQL
         inserted <- TicketRepo.insert(createTicket).run
         _ = inserted === 1
@@ -68,7 +52,7 @@ class FetcherSpec extends Specification with WithH2Database {
           .to[List]
       } yield result1 -> result2
 
-      val (result1: List[Double[Entity]], result2: List[Triple[Entity]]) = test.transact(transactor).unsafeRunSync()
+      val (result1, result2) = test.transact(transactor).unsafeRunSync()
 
       result1.foreach {
         case (e1, e2) =>
@@ -115,6 +99,29 @@ class FetcherSpec extends Specification with WithH2Database {
         _ = all2.map(_._1.name).toSet === names.toSet
         _ = all2.map(_._2.name).toSet === names.toSet
         _ = all2.map(_._3.name).toSet === names.toSet
+
+        count1 <- join1.count { cols =>
+          (cols._1.surname `=` "TestFetcher") and (cols._1.from `=` "TestFetcher") and (cols._1.to `=` "TestFetcher") and
+            (cols._2.surname `=` "TestFetcher") and (cols._2.from `=` "TestFetcher") and (cols._2.to `=` "TestFetcher")
+        }.unique
+        _ = count1 === names.length
+        count2 <- join2.count { cols =>
+          (cols._1.surname `=` "TestFetcher") and (cols._1.from `=` "TestFetcher") and (cols._1.to `=` "TestFetcher") and
+            (cols._2.surname `=` "TestFetcher") and (cols._2.from `=` "TestFetcher") and (cols._2.to `=` "TestFetcher") and
+            (cols._3.surname `=` "TestFetcher") and (cols._3.from `=` "TestFetcher") and (cols._3.to `=` "TestFetcher")
+        }.unique
+        _ = count2 === names.length
+        nonEmpty1 <- join1.exists { cols =>
+          (cols._1.surname `=` "TestFetcher") and (cols._1.from `=` "TestFetcher") and (cols._1.to `=` "TestFetcher") and
+            (cols._2.surname `=` "TestFetcher") and (cols._2.from `=` "TestFetcher") and (cols._2.to `=` "TestFetcher")
+        }.unique
+        _ = nonEmpty1 === true
+        nonEmpty2 <- join2.exists { cols =>
+          (cols._1.surname `=` "TestFetcher") and (cols._1.from `=` "TestFetcher") and (cols._1.to `=` "TestFetcher") and
+            (cols._2.surname `=` "TestFetcher") and (cols._2.from `=` "TestFetcher") and (cols._2.to `=` "TestFetcher") and
+            (cols._3.surname `=` "TestFetcher") and (cols._3.from `=` "TestFetcher") and (cols._3.to `=` "TestFetcher")
+        }.unique
+        _ = nonEmpty2 === true
 
         firstHalf <- join2.fetch
           .withSort(_._1.name, Sort.Ascending)

@@ -1,19 +1,14 @@
 package io.scalaland.ocdquery.internal
 
 import cats.{ Functor, Id }
-import doobie._
+import doobie.{ Update => _, _ }
 import doobie.implicits._
 import io.scalaland.ocdquery.{ ColumnName, Filter, JoinType, TableName, UnitF, Updatable }
 import io.scalaland.ocdquery.missingshapeless.TupleAppender
 
 import scala.collection.immutable.{ ListMap, ListSet }
 
-sealed trait RepoMeta[C, E, U, N] {
-  type Create = C
-  type Entity = E
-  type Update = U
-  type Names  = N
-
+sealed trait RepoMeta[Create, Entity, Update, Names] {
   val table:       Fragment
   val columnNames: ListSet[ColumnName[Any]]
 
@@ -25,14 +20,14 @@ sealed trait RepoMeta[C, E, U, N] {
   lazy val * : Fragment = columnNames.map(_.fragment).reduce(_ ++ fr"," ++ _)
 }
 
-sealed trait UnnamedRepoMeta[C, E, U, N] extends RepoMeta[C, E, U, N] { meta =>
+sealed trait UnnamedRepoMeta[Create, Entity, Update, Names] extends RepoMeta[Create, Entity, Update, Names] { meta =>
 
   def unnamedColForNames[F[_]: Functor](f: Names => F[ColumnName[Any]],
                                         prefix: Option[String] = None): F[ColumnName[Any]]
   def unnamedColForFilter(f:                    Names => Filter, prefix: Option[String] = None): Filter
 
-  def as(name: String): NamedRepoMeta[C, E, U, N] =
-    new NamedRepoMeta[C, E, U, N] {
+  def as(name: String): NamedRepoMeta[Create, Entity, Update, Names] =
+    new NamedRepoMeta[Create, Entity, Update, Names] {
 
       val table:       Fragment                 = meta.table ++ Fragment.const(s" AS $name")
       val columnNames: ListSet[ColumnName[Any]] = meta.columnNames.map(col => ColumnName[Any](name + "." + col.name))
@@ -53,7 +48,7 @@ sealed trait UnnamedRepoMeta[C, E, U, N] extends RepoMeta[C, E, U, N] { meta =>
     }
 }
 
-sealed trait NamedRepoMeta[C, E, U, N] extends RepoMeta[C, E, U, N] { meta0 =>
+sealed trait NamedRepoMeta[Create, Entity, Update, Names] extends RepoMeta[Create, Entity, Update, Names] { meta0 =>
 
   val joinedOn: Option[Fragment]
 
@@ -64,10 +59,10 @@ sealed trait NamedRepoMeta[C, E, U, N] extends RepoMeta[C, E, U, N] { meta0 =>
     meta:     NamedRepoMeta[C1, E1, S1, N1],
     joinType: JoinType = JoinType.Inner
   )(implicit
-    cta: TupleAppender[C, C1],
-    eta: TupleAppender[E, E1],
-    sta: TupleAppender[U, S1],
-    nta: TupleAppender[N, N1]): NamedRepoMeta[cta.Out, eta.Out, sta.Out, nta.Out] =
+    cta: TupleAppender[Create, C1],
+    eta: TupleAppender[Entity, E1],
+    sta: TupleAppender[Update, S1],
+    nta: TupleAppender[Names, N1]): NamedRepoMeta[cta.Out, eta.Out, sta.Out, nta.Out] =
     new NamedRepoMeta[cta.Out, eta.Out, sta.Out, nta.Out] {
 
       val table:       Fragment                 = meta0.table ++ joinType.fragment ++ fr"JOIN" ++ meta.table
@@ -83,13 +78,13 @@ sealed trait NamedRepoMeta[C, E, U, N] extends RepoMeta[C, E, U, N] { meta0 =>
         case (s, s1) => meta0.fromUpdate(s) ++ meta.fromUpdate(s1)
       }
 
-      def namedColForNames[F[_]: Functor](f: Names => F[ColumnName[Any]]): F[ColumnName[Any]] =
+      def namedColForNames[F[_]: Functor](f: nta.Out => F[ColumnName[Any]]): F[ColumnName[Any]] =
         meta0.namedColForNames { n =>
           meta.namedColForNames { n1 =>
             f(nta.append(n, n1))
           }
         }
-      def namedColForFilter(f: Names => Filter): Filter =
+      def namedColForFilter(f: nta.Out => Filter): Filter =
         meta0.namedColForFilter { n =>
           meta.namedColForFilter { n1 =>
             f(nta.append(n, n1))
@@ -99,8 +94,9 @@ sealed trait NamedRepoMeta[C, E, U, N] extends RepoMeta[C, E, U, N] { meta0 =>
       val joinedOn: Option[Fragment] = meta0.joinedOn
     }
 
-  def on(left: N => ColumnName[Any], right: N => ColumnName[Any]): NamedRepoMeta[C, E, U, N] =
-    new NamedRepoMeta[C, E, U, N] {
+  def on(left:  Names => ColumnName[Any],
+         right: Names => ColumnName[Any]): NamedRepoMeta[Create, Entity, Update, Names] =
+    new NamedRepoMeta[Create, Entity, Update, Names] {
 
       val table:       Fragment                 = meta0.table
       val columnNames: ListSet[ColumnName[Any]] = meta0.columnNames
@@ -125,17 +121,17 @@ sealed trait NamedRepoMeta[C, E, U, N] extends RepoMeta[C, E, U, N] { meta0 =>
 
 object RepoMeta {
 
-  def instant[Create, Entity, Select, Columns](
+  def instant[Create, Entity, Update, Names](
     tableName: TableName,
-    columns:   Columns
+    columns:   Names
   )(
-    implicit cols: AllColumns[Columns],
-    forCreate:     ColumnNameFragmentList[Create, Columns],
-    forEntity:     ColumnNameFragmentList[Entity, Columns],
-    forUpdate:     ColumnNameFragmentList[Select, Columns],
-    prefixColumns: PrefixColumns[Columns]
-  ): UnnamedRepoMeta[Create, Entity, Select, Columns] =
-    new UnnamedRepoMeta[Create, Entity, Select, Columns] {
+    implicit cols: AllColumns[Names],
+    forCreate:     ColumnNameFragmentList[Create, Names],
+    forEntity:     ColumnNameFragmentList[Entity, Names],
+    forUpdate:     ColumnNameFragmentList[Update, Names],
+    prefixColumns: PrefixColumns[Names]
+  ): UnnamedRepoMeta[Create, Entity, Update, Names] =
+    new UnnamedRepoMeta[Create, Entity, Update, Names] {
 
       val table:       Fragment                 = Fragment.const(tableName.name)
       val columnNames: ListSet[ColumnName[Any]] = ListSet(cols.getList(columns).toSeq: _*)

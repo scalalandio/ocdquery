@@ -2,12 +2,12 @@ package io.scalaland.ocdquery
 
 import cats.Id
 import cats.implicits._
-import doobie._
+import doobie.{ Update => _, _ }
 import doobie.implicits._
 import io.scalaland.ocdquery.internal.{ NamedRepoMeta, RandomPrefix }
 import io.scalaland.ocdquery.missingshapeless.TupleAppender
 
-class Fetcher[C, E: Read, U, N](val meta: NamedRepoMeta[C, E, U, N]) {
+class Fetcher[Create, Entity: Read, Update, Names](val meta: NamedRepoMeta[Create, Entity, Update, Names]) {
 
   import meta._
 
@@ -53,15 +53,15 @@ class Fetcher[C, E: Read, U, N](val meta: NamedRepoMeta[C, E, U, N]) {
 
   def join[C1, E1, S1, N1, F1](repo2: Repo[C1, E1, S1, N1], joinType: JoinType = JoinType.Inner)(
     implicit
-    cta: TupleAppender[C, C1],
-    eta: TupleAppender[E, E1],
-    sta: TupleAppender[U, S1],
-    nta: TupleAppender[N, N1]
+    cta: TupleAppender[Create, C1],
+    eta: TupleAppender[Entity, E1],
+    sta: TupleAppender[Update, S1],
+    nta: TupleAppender[Names, N1]
   ): Fetcher[cta.Out, eta.Out, sta.Out, nta.Out] = {
     implicit val readE0: Read[eta.Out] = (read, repo2.read).mapN((e, e1) => eta.append(e, e1))
     new Fetcher(meta.join(repo2.meta.as(RandomPrefix.next), joinType))
   }
 
-  def on[A, B](left: N => ColumnName[A], right: N => ColumnName[B]): Fetcher[C, E, U, N] =
+  def on[A, B](left: Names => ColumnName[A], right: Names => ColumnName[B]): Fetcher[Create, Entity, Update, Names] =
     new Fetcher(meta.on(left.andThen(_.as[Any]), right.andThen(_.as[Any])))
 }
