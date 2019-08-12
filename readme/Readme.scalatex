@@ -156,11 +156,11 @@
           ConfigRepo.fetch(_ => emptyFiler).to[List]
 
           // filter by column=value/column<>value
-          ConfigRepo.fetch(_.operatingSystem `=` "Windows").to[List]
+          ConfigRepo.fetch(_.operatingSystem @code{=} "Windows").to[List]
           ConfigRepo.fetch(_.operatingSystem <> "Windows").to[List]
 
           // filter by column1=column2/column1<>column2
-          UserRepo.fetch(cols => cols.name `=` cols.surname).to[List]
+          UserRepo.fetch(cols => cols.name @code{=} cols.surname).to[List]
           UserRepo.fetch(cols => cols.name <> cols.surname).to[List]
 
           // filter using IN
@@ -175,7 +175,7 @@
 
           // AND, OR and NOT are also available
           UserRepo.fetch { cols =>
-            (cols.name `=` "John") and (cold.surname `=` "Smith")
+            (cols.name @code{=} "John") and (cold.surname @code{=} "Smith")
           }.option
         @p
           You can also sort and paginate results:
@@ -189,7 +189,7 @@
           or calculate the size of the result, or check if it would be not empty:
         @hl.scala
           UserRepo.count(_ => emptyFiler).unique
-          ConfigRepo.exists(_.operatingSystem `=` "BeOS").unique
+          ConfigRepo.exists(_.operatingSystem @code{=} "BeOS").unique
 
       @sect{Updating existing data}
         @p
@@ -201,7 +201,7 @@
           @code{emptyUpdate} is similar to @code{DefaultColumnNames} - it can be modified using @code{.copy}
           or (my suggestion) by lens:
         @hl.scala
-          UserRepo.update(_.surname `=` "Smith")(
+          UserRepo.update(_.surname @code{=} "Smith")(
             UserRepo.emptyUpdate.modify(_.name).setTo("Johnny")
           ).run
 
@@ -236,9 +236,220 @@
            }.to[List]
 
   @sect{How it works?}
-    @p
-      TODO
+    @sect{Initial idea}
+      @p
+        Imagine you wanted to generate queries from data objects.
+      @hl.scala
+        import java.util.UUID
+        import java.time.LocalDate
+
+        final case class Ticket(
+          id:      UUID,
+          name:    String,
+          surname: String,
+          from:    String,
+          to:      String,
+          date:    LocalDate
+        )
+
+
+        import doobie._
+        import doobie.implicits._
+
+        object TicketRepo {
+          // ...
+        }
+      @p
+        You may want to be able to insert new entity:
+      @hl.scala
+        final case class TicketCreate(
+          id:      Unit,   // placeholder as this is created by database
+          name:    String,
+          surname: String,
+          from:    String,
+          to:      String,
+          date:    LocalDate
+        )
+
+        object TicketRepository {
+           // ...
+           def insert(entity: TicketCreate): Update0 = ???
+           // ...
+        }
+      @p
+        You may want to be able to fetch data using some obligatory part of the fetching (e.g. ID)
+        and maybe some optional parts (having other field equal to some value):
+
+      @hl.scala
+        final case class TicketFilter(
+          id:      Option[UUID],     // where id      = [this value if set]
+          name:    Option[String],   // and   name    = [this value if set]
+          surname: Option[String],   // and   surname = [this value if set]
+          from:    Option[String],   // and   from    = [this value if set]
+          to:      Option[String],   // and   to      = [this value if set]
+          date:    Option[LocalDate] // and   data    = [this value if set]
+        )
+
+        object TicketRepository {
+           // ...
+           def update(entityFind: TicketFilter): Query0[Ticket] = ???
+           // ...
+        }
+      @p
+        You might want to update existing entity using case class - this you make building queries easy.
+      @hl.scala
+        final case class TicketUpdate(
+          id:      Option[Unit],     // set uuid    = [this value if set],
+          name:    Option[String],   //     name    = [this value if set],
+          surname: Option[String],   //     surname = [this value if set],
+          from:    Option[String],   //     from    = [this value if set],
+          to:      Option[String],   //     to      = [this value if set],
+          date:    Option[LocalDate] //     data    = [this value if set]
+        )
+
+        object TicketRepository {
+           // ...
+           def update(entityUpdate: TicketUpdate): Update0 = ???
+           // ...
+        }
+      @p
+        And you might want to delete entity using fetch criteria:
+      @hl.scala
+        object TicketRepository {
+           // ...
+           def delete(entityDelete: TicketFilter): Query0[Ticket] = ???
+           // ...
+        }
+      @p
+        In all these cases having some object that defines how query will be performed
+        might be really useful. We could get a lot of queries almost for free.
+      @p
+        All these case classes can easily get out of sync, so it would be good
+        if something could enforce that adding field in one place will require adding
+        it somewhere else.
+      @p
+        If we operated under that assumption, we would be able to derive queries
+        automatically. That is as long as we had two more pieces of information
+        table name and:
+      @hl.scala
+        final case class TicketColumns(
+          id:      String,
+          name:    String,
+          surname: String,
+          from:    String,
+          to:      String,
+          date:    String
+        )
+    @sect{Idea of a refactor}
+      @p
+        If we take a closer look, we'll see that we have 3 case classes that are
+        virtually identical - if we were able to flip the type of some fields from
+        @code{A} to @code{Option[A]} to turn entity to update, or all of them to @code{String}
+        to turn it into column configuration, we would reduce the amount of code
+        and fixed issue of case class synchronization.
+      @p
+        And we can do this! The idea is called higher-kinded data and looks like this:
+      @hl.scala
+        import java.time.LocalDate
+        import java.util.UUID
+
+        type Id[A] = A // removed F[_] wrapper
+        type UnitF[A] = Unit // make fields not available at creation "disappear"
+        case class ColumnName[A](name: String) // preserves name of column and its type
+
+        // F is for normal columns which should be available in some what
+        // for all lifecycle
+        // C is for these that should be empty during creation and available
+        // from then on
+        final case class TicketF[F[_], C[_]](
+          id:      C[UUID],
+          name:    F[String],
+          surname: F[String],
+          from:    F[String],
+          to:      F[String],
+          date:    F[LocalDate]
+        )
+
+        // C[_] fields are Units, the rest as of type inside of F[_]
+        type TicketCreate  = TicketF[Id, UnitF]
+        // all fields are of the type inside of F[_]/C[_]
+        type Ticket        = TicketF[Id, Id]
+        // all fields are of Option of inside of F[_]/C[_]
+        type TicketUpdate  = TicketF[Option, Option]
+        // all fields are column names
+        type TicketColumns = TicketF[ColumnName, ColumnName]
+      @p
+        Higher-kinded data is data with higher-kinded types as type parameters.
+      @p
+        This library is about taking this higher-kinded data definition and generating basic CRUD queries for it.
+
+    @sect{Implementation}
+      @p
+        During implementation some decisions had to be made:
+      @ul
+        @li
+          instead of @code{Option} we use our own @code{Updatable} type which could be @code{UpdatedTo(to)} or @code{Skip}
+          to avoid issues during derivation that would occur if you had e.g. @code{O[Option[String]]}
+          as one of field types,
+        @li
+          derivation metadata is stored inside @code{RepoMeta[EntityF]} instance - you can reuse
+          on your own, if the default autogenerated queries doesn't suit your use case:
+          @hl.scala
+            import doobie._
+            import doobie.implicits._
+            import io.scalaland.ocdquery._
+
+            val ticketRepoMeta = RepoMeta.forEntity(
+              "tickets".tableName,
+              DefaultColumnNames.forEntity[TicketF]
+                .modify(_.from).setTo("from_".columnName)
+            )
+
+            val ticketRepo = new EntityRepo(ticketRepoMeta)
+       @li
+         to avoid writing @code{EntityF[Id, Id]}, @code{EntityF[Updatable, Updatable]} and @code{EntityF[Id, UnitF]}
+         manually, some type aliases were introduced:
+         @hl.scala
+           import io.scalaland.ocdquery._
+
+           type TicketCreate = Repo.ForEntity[TicketF]#EntityCreate
+           type Ticket       = Repo.ForEntity[TicketF]#Entity
+           type TicketUpdate = Repo.ForEntity[TicketF]#EntityUpdate
+       @li
+         if you want to extend filtering DSL you can write your own extension methods like:
+         @hl.scala
+           implicit class MyNewFiltering(columnName: ColumnName[Int]) {
+
+             def <(number: Int): Filter = () => columnName.fragment ++ fr"< $number"
+           }
 
   @sect{How to extends DSL?}
     @p
-      TODO
+      (TODO: add examples)
+    @p
+      Actually, repositories doesn't assume much about the types they work on. They only assume that @code{RepoMeta}
+      instances follow their contracts, that is, they return reasonable @code{doobie.Fragment} values for each input.
+    @p
+      @code{RepoMeta} on the other hand rely on values derived from types - derivation of these type classes uses by
+      RepoMeta is where the library actually relies on the fact the we use higher-kinded data. BUT, if you write them
+      yourself, you are free to do it for any combination of types that makes sense for you.
+    @p
+      Additionally, @code{Filter}s are implemented as Single Abstract Methods @code{() => doobie.Fragment}, so you
+      can easily write your own @code{ColumnName[A] => Filter} extension methods (see package @code{sql}).
+
+  @sect{Limitations}
+    @ul
+      @li
+        Library assumes that @code{EntityF} is flat, and automatic generation of Doobie queries is done in a way which doesn't
+        allow you to use JOINs, nested SELECTs etc. If you need them you can use utilities from @code{RepoMeta} to write your own
+        query, while delegating some of the work to @code{RepoMeta} (see how @code{Repo} does it!).
+      @li
+        Using @code{EntityF} everywhere is definitely not convenient. Also it doesn't let you
+        define default values like e.g. @code{None}/@code{Skipped} for optional fields. So use them
+        internally, as entities to work with your database and separate them from
+        entities exposed in your API/published language. You can use [chimney](https://github.com/scalalandio/chimney)
+        for turning public instances to and from internal instances,
+      @li
+        types sometimes confuse compiler, so while it can derive something like @code{shapeless.Generic[TicketF[Id, Id]]},
+        it has issues finding @code{Generic.Aux}, so Doobie sometimes get's confused - @code{QuasiAuto} let you provide
+        the right values explicitly, so that the derivation is not blocked by such silly issue.
