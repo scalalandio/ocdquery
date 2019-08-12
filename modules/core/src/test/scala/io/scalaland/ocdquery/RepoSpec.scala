@@ -14,7 +14,7 @@ import org.specs2.mutable.Specification
 
 final class RepoSpec extends Specification with WithH2Database {
 
-  override def beforeAll(): Unit = {
+  override def beforeAll(): Unit =
     sql"""CREATE TABLE IF NOT EXISTS tickets (
             id       UUID DEFAULT random_uuid() PRIMARY KEY,
             name     TEXT NOT NULL,
@@ -22,9 +22,7 @@ final class RepoSpec extends Specification with WithH2Database {
             from_    TEXT NOT NULL,
             to       TEXT NOT NULL,
             date     DATE NOT NULL
-          )""".update.run.transact(transactor).unsafeRunSync
-    ()
-  }
+          )""".update.run.transact(transactor).void.unsafeRunSync
 
   "Repo" should {
 

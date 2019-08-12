@@ -12,7 +12,7 @@ trait SkipUnit[Create] {
   def from(skipped: SU): Create
 }
 
-object SkipUnit extends SkipUnitLowLevelImplicit {
+object SkipUnit {
 
   type Aux[C, SU0] = SkipUnit[C] { type SU = SU0 }
 
@@ -21,10 +21,19 @@ object SkipUnit extends SkipUnitLowLevelImplicit {
     def from(skipped: HNil): HNil = skipped
   }
 
-  implicit def hconsUnitCase[T <: HList]: Aux[Unit :: T, T] = new SkipUnit[Unit :: T] {
-    type SU = T
-    def from(skipped: T): Unit :: T = () :: skipped
-  }
+  implicit def hconsUnitCase[SU0 <: HList, C <: HList](implicit skip: Aux[C, SU0]): Aux[Unit :: C, SU0] =
+    new SkipUnit[Unit :: C] {
+      type SU = SU0
+      def from(skipped: SU0): Unit :: C = () :: skip.from(skipped)
+    }
+
+  implicit def hconsNonUnitCase[H, SU0 <: HList, C <: HList](implicit skip: Aux[C, SU0],
+                                                             ev:            H =:!= Unit): Aux[H :: C, H :: SU0] =
+    new SkipUnit[H :: C] {
+      ev.hashCode() // suppress unused
+      type SU = H :: SU0
+      def from(skipped: SU): H :: C = skipped.head :: skip.from(skipped.tail)
+    }
 
   implicit def productCase[C, CRep <: HList, SURep <: HList](implicit
                                                              cGen:     Generic.Aux[C, CRep],
@@ -32,16 +41,6 @@ object SkipUnit extends SkipUnitLowLevelImplicit {
                                                              untupler: Untupler[SURep]): Aux[C, untupler.In] =
     new SkipUnit[C] {
       type SU = untupler.In
-      def from(skipped: untupler.In): C =
-        cGen.from(skip.from(untupler(skipped)))
-    }
-}
-
-trait SkipUnitLowLevelImplicit { self: SkipUnit.type =>
-
-  implicit def hconsNonUnitCase[H, SU0 <: HList, C <: HList](implicit skip: Aux[C, SU0]): Aux[H :: C, H :: SU0] =
-    new SkipUnit[H :: C] {
-      type SU = H :: SU0
-      def from(skipped: SU): H :: C = skipped.head :: skip.from(skipped.tail)
+      def from(skipped: untupler.In): C = cGen.from(skip.from(untupler(skipped)))
     }
 }

@@ -34,7 +34,7 @@ class Fetcher[Create, Entity: Read, Update, Names](val meta: NamedRepoMeta[Creat
       val where    = fr"WHERE" ++ namedColForFilter(filter).fragment
       val offsetFr = offset.map(offset => Fragment.const(s"OFFSET $offset")).getOrElse(Fragment.empty)
       val limitFr  = limit.map(limit => Fragment.const(s"LIMIT $limit")).getOrElse(Fragment.empty)
-      (fr"SELECT" ++ * ++ fr"FROM" ++ table ++ joinOn ++ where ++ orderBy ++ offsetFr ++ limitFr).query[Entity]
+      (fr"SELECT" ++ * ++ fr"FROM" ++ table ++ joinOn ++ where ++ orderBy ++ limitFr ++ offsetFr).query[Entity]
     }
   }
   def fetch: Fetch = Fetch()

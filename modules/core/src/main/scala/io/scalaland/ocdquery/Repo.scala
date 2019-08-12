@@ -39,7 +39,7 @@ class Repo[Create, Entity: Read, Update: Empty, Names](val meta: UnnamedRepoMeta
       val offsetFr = offset.map(offset => Fragment.const(s"OFFSET $offset")).getOrElse(Fragment.empty)
       val limitFr  = limit.map(limit => Fragment.const(s"LIMIT $limit")).getOrElse(Fragment.empty)
 
-      (fr"SELECT" ++ * ++ fr"FROM" ++ table ++ fr"WHERE" ++ where ++ orderBy ++ offsetFr ++ limitFr).query[Entity]
+      (fr"SELECT" ++ * ++ fr"FROM" ++ table ++ fr"WHERE" ++ where ++ orderBy ++ limitFr ++ offsetFr).query[Entity]
     }
   }
   def fetch: Fetching = Fetching()
@@ -60,7 +60,7 @@ class Repo[Create, Entity: Read, Update: Empty, Names](val meta: UnnamedRepoMeta
 
     def apply(update: Update): Update0 = {
       val where = filter.map(f => fr"WHERE" ++ unnamedColForFilter(f).fragment).getOrElse(Fragment.empty)
-      (fr"UPDATE" ++ table ++ fr"SET" ++ fromUpdate(update).asSet ++ where).update
+      (fr"UPDATE" ++ table ++ fromUpdate(update).asSet ++ where).update
     }
   }
   def update: Updating = Updating()

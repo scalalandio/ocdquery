@@ -9,7 +9,7 @@ package object example {
     Repo.forEntity[SqlEntityF]("sql_entity".tableName, DefaultColumnNames.forEntity[SqlEntityF])
   }
 
-  val SqlValueRepo = {
+  val SqlValueRepo: Repo.ValueRepo[SqlValueF] = {
     implicit val read: doobie.Read[Repo.ForValue[SqlValueF]#Value] = QuasiAuto.read(Generic[SqlValueF[Id]])
     Repo.forValue[SqlValueF]("sql_value".tableName, DefaultColumnNames.forValue[SqlValueF])
   }

@@ -1,6 +1,7 @@
 package io.scalaland.ocdquery.sql
 
 import doobie.Fragment
+import doobie.implicits._
 import shapeless._
 
 /*
@@ -13,7 +14,7 @@ trait LikeFilterable[A] {
 
 object LikeFilterable {
 
-  def instant[A]: LikeFilterable[A] = pattern => Fragment.const(s"LIKE $pattern")
+  def instant[A]: LikeFilterable[A] = pattern => fr"LIKE $pattern"
 
   implicit val likeFilterableString: LikeFilterable[String] = instant[String]
 

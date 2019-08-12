@@ -1,5 +1,6 @@
 package io.scalaland
 
+import cats.implicits._
 import doobie._
 import doobie.implicits._
 import io.scalaland.ocdquery.internal.UpdateColumns
@@ -10,19 +11,14 @@ package object ocdquery {
 
   type UnitF[_] = Unit
 
-  @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
   implicit class FragmentsOps(val fragments: ListMap[ColumnName[Any], Fragment]) extends AnyVal {
 
-    def asSelect: Fragment =
-      fragments.keysIterator.map(_.fragment).reduce(_ ++ fr"," ++ _)
-    def asAnd: Fragment =
-      fragments.map { case (column, value) => column.fragment ++ fr"=" ++ value }.reduce(_ ++ fr"AND" ++ _)
-    def asOr: Fragment =
-      fragments.map { case (column, value) => column.fragment ++ fr"=" ++ value }.reduce(_ ++ fr"OR" ++ _)
-    def asSet: Fragment =
-      fragments.map { case (column, value) => column.fragment ++ fr"=" ++ value }.reduce(_ ++ fr"," ++ _)
-    def asValues: Fragment =
-      fragments.valuesIterator.reduce(_ ++ fr"," ++ _)
+    def asSelect: Fragment = fragments.keysIterator.toList.map(_.fragment).intercalate(fr",")
+    def asValues: Fragment = fragments.valuesIterator.toList.intercalate(fr",")
+    private def asEq = fragments.toSeq.map { case (column, value) => column.fragment ++ fr"=" ++ value }
+    def asAnd: Fragment = Fragments.and(asEq: _*)
+    def asOr:  Fragment = Fragments.or(asEq:  _*)
+    def asSet: Fragment = Fragments.set(asEq: _*)
   }
 
   private val splitWordsPattern = "((^|[A-Z])([^A-Z]*))".r

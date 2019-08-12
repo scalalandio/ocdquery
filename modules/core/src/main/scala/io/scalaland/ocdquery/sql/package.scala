@@ -1,5 +1,6 @@
 package io.scalaland.ocdquery
 
+import cats.data.NonEmptyList
 import doobie._
 import doobie.implicits._
 
@@ -18,9 +19,12 @@ package object sql {
     def <>(a:  A)(implicit param: Put[A]): Filter = () => columnName.fragment ++ fr"<> $a"
 
     // TOD: move it to a type class(?)
-    @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     def in(values: A*)(implicit param: Put[A]): Filter =
-      () => fr"IN (" ++ (values.map(value => fr"$value").reduce(_ ++ fr"," ++ _)) ++ fr")"
+      () =>
+        values.toList match {
+          case head :: tail => Fragments.in[NonEmptyList, A](columnName.fragment, NonEmptyList(head, tail))
+          case Nil          => fr"true"
+      }
 
     def between(begin: A, end: A)(implicit filterable: BetweenFilterable[A]): Filter =
       () => columnName.fragment ++ filterable.between(begin, end)

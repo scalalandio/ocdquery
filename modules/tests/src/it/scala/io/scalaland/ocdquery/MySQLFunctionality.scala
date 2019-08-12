@@ -8,12 +8,14 @@ import org.specs2.mutable.Specification
 
 final class MySQLFunctionality extends Specification with TestCommonFeatures {
 
+  override val isMySql = true
+
   protected def makeTransactor: Resource[IO, Transactor[IO]] =
     for {
       ce <- ExecutionContexts.fixedThreadPool[IO](32) // scalastyle:ignore
       te <- ExecutionContexts.cachedThreadPool[IO]
       xa <- HikariTransactor.newHikariTransactor[IO](
-        driverClassName = classOf[com.mysql.jdbc.Driver].getName,
+        driverClassName = classOf[com.mysql.cj.jdbc.Driver].getName,
         url             = "jdbc:mysql://localhost:3306/ocdquery",
         user            = "ocdquery",
         pass            = "password",
