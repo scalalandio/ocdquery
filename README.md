@@ -6,6 +6,8 @@
 
 [Doobie](https://github.com/tpolecat/doobie/) queries generated using higher-kinded data.
 
+See [complete documentation at GH pages](https://scalalandio.github.io/ocdquery/)
+
 ## Instalation
 
 1. add in your sbt:

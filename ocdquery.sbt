@@ -6,7 +6,7 @@ lazy val root = project.root
   .setDescription("OCD Query build")
   .configureRoot
   .noPublish
-  .aggregate(core, tests, readme)
+  .aggregate(core, tests)
 
 lazy val core = project.from("core")
   .setName("ocdquery-core")
