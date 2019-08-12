@@ -122,7 +122,7 @@ object Repo {
       implicit cols: AllColumns[ValueColumn],
       forEntity:     ColumnNameFragmentList[Value, ValueColumn],
       forUpdate:     ColumnNameFragmentList[ValueUpdate, ValueColumn],
-      prefixColumns: PrefixColumns[ValueColumn],
+      prefixColumns: UpdateColumns[ValueColumn],
       read:          Read[Value],
       emptySelect:   Empty[ValueUpdate]
     ): ValueRepo[ValueF] =
@@ -169,7 +169,7 @@ object Repo {
       forCreate:     ColumnNameFragmentList[EntityCreate, EntityColumn],
       forEntity:     ColumnNameFragmentList[Entity, EntityColumn],
       forUpdate:     ColumnNameFragmentList[EntityUpdate, EntityColumn],
-      prefixColumns: PrefixColumns[EntityColumn],
+      prefixColumns: UpdateColumns[EntityColumn],
       read:          Read[Entity],
       emptySelect:   Empty[EntityUpdate]
     ): EntityRepo[EntityF] =

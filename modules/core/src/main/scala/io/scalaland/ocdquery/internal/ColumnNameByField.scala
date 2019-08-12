@@ -28,8 +28,6 @@ object ColumnNameByField {
         }
     }
 
-  def dispatch[T](sealedTrait: SealedTrait[Typeclass, T]): Typeclass[T] = ???
-
   implicit def gen[T]: Typeclass[T] = macro Magnolia.gen[T]
 
   implicit def forColumnName[A]: ColumnNameByField[ColumnName[A]] = columnName => List("" -> columnName.as[Any])

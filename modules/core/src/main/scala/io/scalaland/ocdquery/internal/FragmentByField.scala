@@ -3,7 +3,7 @@ package io.scalaland.ocdquery.internal
 import doobie._
 import doobie.implicits._
 import io.scalaland.ocdquery.{ Skip, Updatable, UpdateTo }
-import magnolia.{ CaseClass, Magnolia, SealedTrait }
+import magnolia._
 
 import scala.annotation.implicitNotFound
 import scala.language.experimental.macros
@@ -29,8 +29,6 @@ object FragmentByField extends FragmentByFieldLowLevelImplicit {
             if (label.isEmpty) param.label -> columnName else label -> columnName
         }
     }
-
-  def dispatch[T](sealedTrait: SealedTrait[Typeclass, T]): Typeclass[T] = ???
 
   implicit def gen[T]: Typeclass[T] = macro Magnolia.gen[T]
 

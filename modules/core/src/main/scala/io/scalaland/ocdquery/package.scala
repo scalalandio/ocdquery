@@ -2,6 +2,7 @@ package io.scalaland
 
 import doobie._
 import doobie.implicits._
+import io.scalaland.ocdquery.internal.UpdateColumns
 
 import scala.collection.immutable.ListMap
 
@@ -22,6 +23,19 @@ package object ocdquery {
       fragments.map { case (column, value) => column.fragment ++ fr"=" ++ value }.reduce(_ ++ fr"," ++ _)
     def asValues: Fragment =
       fragments.valuesIterator.reduce(_ ++ fr"," ++ _)
+  }
+
+  private val splitWordsPattern = "((^|[A-Z])([^A-Z]*))".r
+  implicit class ColumnNamesOps[Names](val names: Names) extends AnyVal {
+
+    def updateColumns(f: String => String)(implicit update: UpdateColumns[Names]): Names = update.update(names, f)
+
+    def prefixColumns(prefix: String)(implicit update: UpdateColumns[Names]): Names = updateColumns(prefix + "." + _)
+
+    private def splitWords(str: String) = splitWordsPattern.findAllMatchIn(str).map(_.toString).toList
+
+    def snakeCaseColumns(implicit update: UpdateColumns[Names]): Names =
+      updateColumns(str => splitWords(str).map(_.toLowerCase).mkString("_"))
   }
 
   implicit class AsNameOps(val name: String) extends AnyVal {

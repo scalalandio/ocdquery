@@ -23,9 +23,9 @@ object Empty {
         param.typeclass.get()
     }
 
-  def dispatch[T](sealedTrait: SealedTrait[Typeclass, T]): Typeclass[T] = ???
-
   implicit def gen[T]: Typeclass[T] = macro Magnolia.gen[T]
 
-  implicit def empty[A]: Empty[Updatable[A]] = () => Skip
+  implicit def emptyUpdatable[A]: Empty[Updatable[A]] = () => Skip
+
+  implicit val emptyUnit: Empty[Unit] = () => ()
 }

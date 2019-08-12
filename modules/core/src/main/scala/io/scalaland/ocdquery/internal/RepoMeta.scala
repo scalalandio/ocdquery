@@ -3,7 +3,7 @@ package io.scalaland.ocdquery.internal
 import cats.{ Functor, Id }
 import doobie.{ Update => _, _ }
 import doobie.implicits._
-import io.scalaland.ocdquery.{ ColumnName, Filter, JoinType, TableName, UnitF, Updatable }
+import io.scalaland.ocdquery.{ ColumnName, ColumnNamesOps, Filter, JoinType, TableName, UnitF, Updatable }
 import io.scalaland.ocdquery.missingshapeless.TupleAppender
 
 import scala.collection.immutable.{ ListMap, ListSet }
@@ -129,7 +129,7 @@ object RepoMeta {
     forCreate:     ColumnNameFragmentList[Create, Names],
     forEntity:     ColumnNameFragmentList[Entity, Names],
     forUpdate:     ColumnNameFragmentList[Update, Names],
-    prefixColumns: PrefixColumns[Names]
+    updateColumns: UpdateColumns[Names]
   ): UnnamedRepoMeta[Create, Entity, Update, Names] =
     new UnnamedRepoMeta[Create, Entity, Update, Names] {
 
@@ -145,9 +145,9 @@ object RepoMeta {
 
       def unnamedColForNames[F[_]: Functor](f: Names => F[ColumnName[Any]],
                                             prefix: Option[String]): F[ColumnName[Any]] =
-        f(prefix.map(prefixColumns.prepend(columns, _)).getOrElse(columns))
+        f(prefix.map(columns.prefixColumns(_)).getOrElse(columns))
       def unnamedColForFilter(f: Names => Filter, prefix: Option[String]): Filter =
-        f(prefix.map(prefixColumns.prepend(columns, _)).getOrElse(columns))
+        f(prefix.map(columns.prefixColumns(_)).getOrElse(columns))
     }
 
   def forValue[ValueF[_[_]]](
@@ -157,7 +157,7 @@ object RepoMeta {
     implicit cols: AllColumns[ValueF[ColumnName]],
     forEntity:     ColumnNameFragmentList[ValueF[Id], ValueF[ColumnName]],
     forUpdate:     ColumnNameFragmentList[ValueF[Updatable], ValueF[ColumnName]],
-    prefixColumns: PrefixColumns[ValueF[ColumnName]]
+    prefixColumns: UpdateColumns[ValueF[ColumnName]]
   ): UnnamedRepoMeta[ValueF[Id], ValueF[Id], ValueF[Updatable], ValueF[ColumnName]] =
     instant[ValueF[Id], ValueF[Id], ValueF[Updatable], ValueF[ColumnName]](tableName, columns)
 
@@ -169,7 +169,7 @@ object RepoMeta {
     forCreate:     ColumnNameFragmentList[EntityF[Id, UnitF], EntityF[ColumnName, ColumnName]],
     forEntity:     ColumnNameFragmentList[EntityF[Id, Id], EntityF[ColumnName, ColumnName]],
     forUpdate:     ColumnNameFragmentList[EntityF[Updatable, Updatable], EntityF[ColumnName, ColumnName]],
-    prefixColumns: PrefixColumns[EntityF[ColumnName, ColumnName]]
+    prefixColumns: UpdateColumns[EntityF[ColumnName, ColumnName]]
   ): UnnamedRepoMeta[EntityF[Id, UnitF], EntityF[Id, Id], EntityF[Updatable, Updatable], EntityF[ColumnName,
                                                                                                  ColumnName]] =
     instant[EntityF[Id, UnitF], EntityF[Id, Id], EntityF[Updatable, Updatable], EntityF[ColumnName, ColumnName]](
