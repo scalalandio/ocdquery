@@ -11,6 +11,8 @@ package object ocdquery {
 
   type UnitF[_] = Unit
 
+  val emptyFilter: Filter = () => fr"1 = 1"
+
   implicit class FragmentsOps(val fragments: ListMap[ColumnName[Any], Fragment]) extends AnyVal {
 
     def asSelect: Fragment = fragments.keysIterator.toList.map(_.fragment).intercalate(fr",")

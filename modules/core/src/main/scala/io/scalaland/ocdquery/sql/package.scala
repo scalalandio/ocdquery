@@ -34,6 +34,5 @@ package object sql {
     def like(pattern: String)(implicit filterable: LikeFilterable[A]): Filter =
       () => columnName.fragment ++ filterable.like(pattern)
   }
-
   // scalastyle:on
 }

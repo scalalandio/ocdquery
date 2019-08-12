@@ -6,7 +6,7 @@ lazy val root = project.root
   .setDescription("OCD Query build")
   .configureRoot
   .noPublish
-  .aggregate(core, tests)
+  .aggregate(core, tests, readme)
 
 lazy val core = project.from("core")
   .setName("ocdquery-core")
@@ -29,6 +29,21 @@ lazy val tests = project.from("tests")
   .configureIntegrationTests(requiresFork = true)
   .noPublish
   .dependsOn(core)
+
+lazy val readme = scalatex.ScalatexReadme(
+    projectId = "readme",
+    wd        = file(""),
+    url       = "https://github.com/scalalandio/ocdquery/tree/master",
+    source    = "Readme"
+  )
+  .configureModule
+  .noPublish
+  .enablePlugins(GhpagesPlugin)
+  .settings(
+    siteSourceDirectory := target.value / "scalatex",
+    git.remoteRepo := "git@github.com:scalalandio/ocdquery.git",
+    Jekyll / makeSite / includeFilter := new FileFilter { def accept(p: File) = true }
+  )
 
 addCommandAlias("fullTest", ";test;it:test;scalastyle")
 addCommandAlias("fullCoverageTest", ";coverage;test;it:test;coverageReport;coverageAggregate;scalastyle")

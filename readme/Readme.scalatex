@@ -1,0 +1,244 @@
+@import Main._
+@import scalatex.site._
+
+@raw("""<script async src="https://www.googletagmanager.com/gtag/js?id=UA-116165806-1"></script>""")
+
+@script
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'UA-116165806-1');
+
+@a(
+  href:="https://github.com/scalalandio/ocdquery",
+  position.absolute,
+  top:=0,right:=0,border:=0,
+  img(
+    src:="https://s3.amazonaws.com/github/ribbons/forkme_right_orange_ff7600.png",
+    alt:="Fork me on GitHub"
+  )
+)
+
+@sect("OCDQuery", "Scala library for repositories generating Doobie queries from higher-kinded data")
+  @sect{What OCDQuery does}
+    @p
+      Overly-Complicated Database Query takes a case class define by you and turns it into:
+    @ul
+      @li
+        config format for defining column-name-to-case-class-field mapping (with sane defaults)
+      @li
+        creation object allowing you to pass only certain fields to @code{INSERT} while the others will use @code{DEFAULT}s
+      @li
+        entity object fetched from database
+      @li
+        update object that let you update only certain fields without writing whole object at once
+      @li
+        filters for select, update and delete queries
+    @p
+      Additionally, repositories can be joined together to fetch tuples of objects.
+    @p
+      All returned results are @lnk("Doobie", "https://tpolecat.github.io/doobie/") queries.
+
+  @sect{How to use it?}
+    @p
+      Add OCDQuery dependency to your build (currently released only for Scala 2.12):
+    @hl.scala
+      libraryDependencies += "io.scalaland" %% "chimney" % "0.4.1"
+    @p
+      If your model contains only fields populated and managed by API user, define it as value:
+    @hl.scala
+      // values has one type param with a gap, used to wrap types of all fields
+      final case class ConfigF[Field[_]](
+        operatingSystem: Field[String],
+        numberOfCores:   Field[Int]
+      )
+    @p
+      or if it has fields populated by database - assigned IDs, auto increment, @code{DEFAULT now()}, etc -
+      (which can be tied to a records lifecycle) use entity:
+    @hl.scala
+      import java.time.LocalDate
+      import java.util.UUID
+      // entities has two type params with gaps:
+      // - the first to fields passed manually on create,
+      // - the other fields created by database
+      final case class UserF[NormalField[_], CreatedField[_]](
+        id:        CreatedField[UUID],
+        name:      NormalField[String],
+        surname:   NormalField[String],
+        createdAt: CreatedField[LocalDate]
+      )
+    @p
+      then create the repository out of it:
+    @hl.scala
+      import cats.Id
+      import io.scalaland.ocdquery._
+      import shapeless.Generic
+
+      val ConfigFieldRepo = {
+        implicit val configRead = QuasiAuto.read(Generic[ConfigF[Id]])
+        Repo.forValue[ConfigF]("cfgs".tableName, DefaultColumnNames.forValue[ConfigF])
+      }
+
+      val UserRepo = {
+        implicit val userRead = QuasiAuto.read(Generic[UserF[Id]])
+        Repo.forEntity[UserF]("users".tableName, DefaultColumnNames.forEntity[UserF])
+      }
+    @p
+      and you are set up!
+
+      @sect{Configuring column mappings}
+        @p
+          Default column mappings returned by @code{DefaultColumnNames} assign the field name from the case class
+          as the name of the column it is mapped to. You can modify it by updating all fields globally:
+        @hl.scala
+          import io.scalaland.ocdquery._
+
+          DefaultColumnNames.forValue[ConfigF].updateColumns("_" + _)
+          DefaultColumnNames.forValue[ConfigF].updateColumns(_.toLowerCase)
+          DefaultColumnNames.forValue[ConfigF].snakeCaseColumns
+        @p
+          or modify just the single field:
+        @hl.scala
+          DefaultColumnNames.forValue[ConfigF].copy[ColumnName](
+            operatingSystem = "os".columnName
+          )
+          DefaultColumnNames.forEntity[UserF].copy[ColumnName, ColumnName](
+            name = "name_".columnName
+          )
+        @p
+          is it a but ugly, though, which is why I recommend using lenses library like
+          @lnk("Quicklens", "https://github.com/softwaremill/quicklens")
+        @hl.scala
+          import com.softwaremill.quicklens._
+          import io.scalaland.ocdquery._
+
+          DefaultColumnNames.forValue[ConfigF]
+            .modify(_.operatingSystem).setTo("os".columnName)
+          DefaultColumnNames.forEntity[UserF]
+            .modify(_.name).setTo("name_".columnName)
+        @p
+          or @lnk("Monocle", "http://julien-truffaut.github.io/Monocle"):
+        @hl.scala
+          import io.scalaland.ocdquery._
+          import monocle.macros.syntax.lens._
+
+          DefaultColumnNames.forValue[ConfigF]
+            .lens(_.operatingSystem).set("os".columnName)
+          DefaultColumnNames.forEntity[UserF]
+            .lens(_.name).set("name_".columnName)
+        @p
+          (I will use Quicklens for the following examples).
+
+      @sect{Inserting new data}
+        @p
+          In order to insert new data you just need to pass it into @code{.insert} method:
+        @hl.scala
+          // value example - value looks the same during creation as later
+          ConfigRepo.insert(
+            ConfigF[Id]("Windows", 4)
+          ).run
+
+          // entity example
+          // entity has some fields created, so they kind of "disappear" from the type
+          // - in such case it is prettier to create them from a tuple containing
+          // only required fields
+          UserRepo.insert(
+            Create.forEntity[UserF].fromTuple(("John", "Smith"))
+          ).run
+
+      @sect{Fetching existing data}
+        @p
+          To fetch existing data you need to use @code{.fetch} and specify some filter:
+        @hl.scala
+          import io.scalaland.ocdquery.sql._ // definitions common for all SQLs
+
+          // fetch all
+          ConfigRepo.fetch(_ => emptyFiler).to[List]
+
+          // filter by column=value/column<>value
+          ConfigRepo.fetch(_.operatingSystem `=` "Windows").to[List]
+          ConfigRepo.fetch(_.operatingSystem <> "Windows").to[List]
+
+          // filter by column1=column2/column1<>column2
+          UserRepo.fetch(cols => cols.name `=` cols.surname).to[List]
+          UserRepo.fetch(cols => cols.name <> cols.surname).to[List]
+
+          // filter using IN
+          ConfigRepo.fetch(_.numberOfCores.in(2, 4, 6)).to[List]
+
+          // filter using (NOT) BETWEEN
+          ConfigRepo.fetch(_.numberOfCores.between(4 8)).to[List]
+          ConfigRepo.fetch(_.numberOfCores.notBetween(4 8)).to[List]
+
+          // filter using LIKE
+          ConfigRepo.fetch(_.operatingSystem.like("Windows%")).to[List]
+
+          // AND, OR and NOT are also available
+          UserRepo.fetch { cols =>
+            (cols.name `=` "John") and (cold.surname `=` "Smith")
+          }.option
+        @p
+          You can also sort and paginate results:
+        @hl.scala
+          UserRepo
+            .fetch
+            .withSort(_.surname, Sort.Ascending)
+            .withOffset(5)
+            .withLimit(10)(_ => emptyFiler).to[List]
+        @p
+          or calculate the size of the result, or check if it would be not empty:
+        @hl.scala
+          UserRepo.count(_ => emptyFiler).unique
+          ConfigRepo.exists(_.operatingSystem `=` "BeOS").unique
+
+      @sect{Updating existing data}
+        @p
+          In order to @code{.update} data you have to filter which rows should be updated and define which
+          should be set to specific values:
+        @hl.scala
+          UserRepo.update(_ => emptyFilter)(UserRepo.emptyUpdate).run
+        @p
+          @code{emptyUpdate} is similar to @code{DefaultColumnNames} - it can be modified using @code{.copy}
+          or (my suggestion) by lens:
+        @hl.scala
+          UserRepo.update(_.surname `=` "Smith")(
+            UserRepo.emptyUpdate.modify(_.name).setTo("Johnny")
+          ).run
+
+      @sect{Deleting data}
+        @p
+          Delete works similar to filtering except it will remove all that it matches instead of returning:
+        @hl.scala
+          UserRepo.delete(_.name <> "John").run
+
+      @sect{Fetching tuples}
+        @p
+          When you take a @code{Repo} and call a @code{.join} on it, you will obtain @code{Fetcher}, which cannot
+          modify data, but it can fetch a tuple of types from both repositories. @code{Fetcher} can be again
+          combined with a @code{Repo} to obtain a @code{Fetcher} of triple, then quadruple, etc:
+        @hl.scala
+          UserRepo.join(UserRepo) // Fetcher of (User, User)
+          UserRepo.join(UserRepo).join(UserRepo) // Fetcher of (User, User, User)
+        @p
+          during joining you can define the type of @code{JOIN} by passing @code{JoinType} and then you can
+          define @code{ON} condition(s):
+        @hl.scala
+          UserRepo.join(UserRepo, JoinType.OUTER)
+            .on(_._1.name, _._2.surname) // columns for ON come from tuple
+        @p
+          Once you build a Fetcher you can @code{.fetch} data using the same way it works with repository
+          (except that now you extract columns from tuple):
+        @hl.scala
+           UserRepo.join(UserRepo).join(UserRepo).fetch { cols =>
+             (cols._1.surname <> cols._2.surname) and
+               (cols._1.surname <> cols._3.surname) and
+               (cols._2.surname <> cols._3.surname)
+           }.to[List]
+
+  @sect{How it works?}
+    @p
+      TODO
+
+  @sect{How to extends DSL?}
+    @p
+      TODO
