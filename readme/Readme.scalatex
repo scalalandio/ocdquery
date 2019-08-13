@@ -43,7 +43,7 @@
     @p
       Add OCDQuery dependency to your build (currently released only for Scala 2.12):
     @hl.scala
-      libraryDependencies += "io.scalaland" %% "chimney" % "0.4.1"
+      libraryDependencies += "io.scalaland" %% "ocdquery" % "0.4.1"
     @p
       If your model contains only fields populated and managed by API user, define it as value:
     @hl.scala
@@ -423,19 +423,124 @@
              def <(number: Int): Filter = () => columnName.fragment ++ fr"< $number"
            }
 
-  @sect{How to extends DSL?}
-    @p
-      (TODO: add examples)
+  @sect{How to extend DSL?}
     @p
       Actually, repositories doesn't assume much about the types they work on. They only assume that @code{RepoMeta}
       instances follow their contracts, that is, they return reasonable @code{doobie.Fragment} values for each input.
+    @hl.scala
+      new Repo(repoMeta) // Repo only uses functionality of RepoMeta
     @p
       @code{RepoMeta} on the other hand rely on values derived from types - derivation of these type classes uses by
       RepoMeta is where the library actually relies on the fact the we use higher-kinded data. BUT, if you write them
       yourself, you are free to do it for any combination of types that makes sense for you.
+    @hl.scala
+      // common operations for all kinds of Repos
+      sealed trait RepoMeta[Create, Entity, Update, Names] {
+        val table:       Fragment                 // table name, with or without alias
+        val columnNames: ListSet[ColumnName[Any]] // required by SELECT
+
+        // turns different types into ColumnName -> column value Map
+        val fromCreate: Create => ListMap[ColumnName[Any], Fragment]
+        val fromEntity: Entity => ListMap[ColumnName[Any], Fragment]
+        val fromUpdate: Update => ListMap[ColumnName[Any], Fragment]
+
+        lazy val * : Fragment = ... // * for SELECT
+      }
+
+      // Repo which isn't using aliases in FROM - for simple SELECT without JOINs
+      sealed trait UnnamedRepoMeta[Create, Entity, Update, Names]
+          extends RepoMeta[Create, Entity, Update, Names] {
+
+        // main use case: for F=Id pass Names => ColumnName
+        // to obtain e.g. column in ORDER BY
+        def unnamedColForNames[F[_]: Functor](
+          f: Names => F[ColumnName[Any]],
+          prefix: Option[String] = None
+        ): F[ColumnName[Any]]
+        // used for filtering
+        def unnamedColForFilter(f: Names => Filter,
+                                prefix: Option[String] = None): Filter
+
+        // provides alias in FROM
+        def as(name: String): NamedRepoMeta[Create, Entity, Update, Names] = ...
+      }
+
+      // Repo which uses aliases - only aliased Fragments can be used in JOINed queries
+      sealed trait NamedRepoMeta[Create, Entity, Update, Names]
+          extends RepoMeta[Create, Entity, Update, Names] {
+
+        // everything that goes into ON
+        val joinedOn: Option[Fragment]
+
+        // for ORDER BY
+        def namedColForNames[F[_]: Functor](
+          f: Names => F[ColumnName[Any]]
+        ): F[ColumnName[Any]]
+        // for filtering
+        def namedColForFilter(f: Names => Filter): Filter
+
+        // JOIN (without ON), prevents nested tuples
+        // A join B => (A, B)
+        // (A, B) join C => (A, B, C)
+        // (A, B, C) join D => (A, B, C, D)
+        // etc
+        def join[C1, E1, S1, N1](
+          meta:     NamedRepoMeta[C1, E1, S1, N1],
+          joinType: JoinType = JoinType.Inner
+        )(implicit
+          cta: TupleAppender[Create, C1],
+          eta: TupleAppender[Entity, E1],
+          sta: TupleAppender[Update, S1],
+          nta: TupleAppender[Names, N1]
+        ): NamedRepoMeta[cta.Out, eta.Out, sta.Out, nta.Out] = ...
+
+        // fills ON after JOIN
+        def on(
+          left:  Names => ColumnName[Any],
+          right: Names => ColumnName[Any]
+        ): NamedRepoMeta[Create, Entity, Update, Names] = ...
+      }
+
+      object RepoMeta {
+
+        // combines derived type classes into RepoMeta
+        def instant[Create, Entity, Update, Names](
+          tableName: TableName,
+          columns:   Names
+        )(
+          implicit cols: AllColumns[Names],
+          forCreate:     ColumnNameFragmentList[Create, Names],
+          forEntity:     ColumnNameFragmentList[Entity, Names],
+          forUpdate:     ColumnNameFragmentList[Update, Names],
+          updateColumns: UpdateColumns[Names]
+        ): UnnamedRepoMeta[Create, Entity, Update, Names] = ...
+
+        // other methods
+      }
+    @p
+      By analysing these you should be able to understand how to define your own arbitrary Repo
+      by defining @code{AllColumns}, @code{ColumnNameFragmentList} and @code{UpdateColumns} instances.
+    @hl.scala
+      type ArbitraryColumns // ColumnName[A] fields only - config and filters
+      type ArbitraryCreate  // only fields present at creation
+      type ArbitraryEntity  // all fields
+      type ArbitraryUpdate  // Updatable[A] fields only - for defining updates
+      implicit val allColumns: AllColumns[ArbitraryColumns] = ...
+      implicit val forCreate: ColumnNameFragmentList[ArbitraryCreate,
+                                                     ArbitraryColumns] = ...
+      implicit val forEntity: ColumnNameFragmentList[ArbitraryEntity,
+                                                     ArbitraryColumns] = ...
+      implicit val forUpdate: ColumnNameFragmentList[ArbitraryUpdate,
+                                                     ArbitraryColumns] = ...
+      new Repo(RepoMeta.instance("table".tableName, allColumnsNames))
     @p
       Additionally, @code{Filter}s are implemented as Single Abstract Methods @code{() => doobie.Fragment}, so you
       can easily write your own @code{ColumnName[A] => Filter} extension methods (see package @code{sql}).
+    @hl.scala
+      implicit class MyNewFiltering(columnName: ColumnName[Int]) {
+
+        def <(number: Int): Filter = () => columnName.fragment ++ fr"< $number"
+      }
 
   @sect{Limitations}
     @ul
