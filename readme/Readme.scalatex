@@ -156,11 +156,11 @@
           ConfigRepo.fetch(_ => emptyFiler).to[List]
 
           // filter by column=value/column<>value
-          ConfigRepo.fetch(_.operatingSystem @code{=} "Windows").to[List]
+          ConfigRepo.fetch(_.operatingSystem `=` "Windows").to[List]
           ConfigRepo.fetch(_.operatingSystem <> "Windows").to[List]
 
           // filter by column1=column2/column1<>column2
-          UserRepo.fetch(cols => cols.name @code{=} cols.surname).to[List]
+          UserRepo.fetch(cols => cols.name `=` cols.surname).to[List]
           UserRepo.fetch(cols => cols.name <> cols.surname).to[List]
 
           // filter using IN
@@ -175,7 +175,7 @@
 
           // AND, OR and NOT are also available
           UserRepo.fetch { cols =>
-            (cols.name @code{=} "John") and (cold.surname @code{=} "Smith")
+            (cols.name `=` "John") and (cold.surname `=` "Smith")
           }.option
         @p
           You can also sort and paginate results:
@@ -189,7 +189,7 @@
           or calculate the size of the result, or check if it would be not empty:
         @hl.scala
           UserRepo.count(_ => emptyFiler).unique
-          ConfigRepo.exists(_.operatingSystem @code{=} "BeOS").unique
+          ConfigRepo.exists(_.operatingSystem `=` "BeOS").unique
 
       @sect{Updating existing data}
         @p
@@ -201,7 +201,7 @@
           @code{emptyUpdate} is similar to @code{DefaultColumnNames} - it can be modified using @code{.copy}
           or (my suggestion) by lens:
         @hl.scala
-          UserRepo.update(_.surname @code{=} "Smith")(
+          UserRepo.update(_.surname `=` "Smith")(
             UserRepo.emptyUpdate.modify(_.name).setTo("Johnny")
           ).run
 
