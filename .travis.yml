@@ -15,12 +15,12 @@ install:
               - sudo apt-get update
               - sudo apt-get install zsh
               - sudo chmod +x scripts/*
-              - scripts/sbt update
+              - ./sbt update
 before_script:
               - sudo service mysql stop
               - sudo service postgresql stop
               - docker-compose up -d
-script:         scripts/run-all-tests.sh
+script:         ./sbt fullCoverageTest
 after_script:
               - docker-compose down --remove-orphans
               - scripts/prepare-test-results-for-ci.sh
