@@ -43,9 +43,9 @@
 
   @sect{How to use it?}
     @p
-      Add OCDQuery dependency to your build (currently released only for Scala 2.12):
+      Add OCDQuery dependency to your build (released only for Scala 2.12 and 2.13):
     @hl.scala
-      libraryDependencies += "io.scalaland" %% "ocdquery" % "0.4.1"
+      libraryDependencies += "io.scalaland" %% "ocdquery" % "0.5.0"
     @p
       If your model contains only fields populated and managed by API user, define it as value:
     @hl.scala
