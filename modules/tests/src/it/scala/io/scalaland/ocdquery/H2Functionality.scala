@@ -1,6 +1,6 @@
 package io.scalaland.ocdquery
 
-import cats.effect.{ IO, Resource }
+import cats.effect.{ Blocker, IO, Resource }
 import doobie._
 import doobie.implicits._
 import doobie.h2.H2Transactor
@@ -13,11 +13,11 @@ final class H2Functionality extends Specification with TestCommonFeatures {
       ce <- ExecutionContexts.fixedThreadPool[IO](32) // scalastyle:ignore
       te <- ExecutionContexts.cachedThreadPool[IO]
       xa <- H2Transactor.newH2Transactor[IO](
-        url        = "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1",
-        user       = "ocdquery",
-        pass       = "password",
-        connectEC  = ce,
-        transactEC = te
+        url       = "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1",
+        user      = "ocdquery",
+        pass      = "password",
+        connectEC = ce,
+        blocker   = Blocker.liftExecutionContext(te)
       )
     } yield xa
 
