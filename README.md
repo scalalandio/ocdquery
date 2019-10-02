@@ -12,7 +12,7 @@ See [complete documentation at GH pages](https://scalalandio.github.io/ocdquery/
 
 1. add in your sbt:
 ```scala
-libraryDependencies += "io.scalaland" %% "ocdquery-core" % "0.4.1"
+libraryDependencies += "io.scalaland" %% "ocdquery-core" % "0.5.0"
 ```
 (and maybe some optics library like [Quicklens](https://github.com/softwaremill/quicklens)
 or [Monocle](https://github.com/julien-truffaut/Monocle))
