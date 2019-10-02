@@ -29,6 +29,7 @@ class Repo[Create, Entity: Read, Update: Empty, Names](val meta: UnnamedRepoMeta
 
     def withLimit(limit: Long): Fetching = copy(limit = Some(limit))
 
+    @SuppressWarnings(Array("org.wartremover.warts.StringPlusAny"))
     def apply(filter: Names => Filter): Query0[Entity] = {
       val where = unnamedColForFilter(filter).fragment
       val orderBy = sort match {

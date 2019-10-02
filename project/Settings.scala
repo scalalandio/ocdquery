@@ -17,6 +17,7 @@ object Settings extends Dependencies {
 
     scalaOrganization := scalaOrganizationUsed,
     scalaVersion      := scalaVersionUsed,
+    crossScalaVersions := crossScalaVersionsUsed,
 
     scalafmtVersion := scalaFmtVersionUsed
   )
@@ -80,6 +81,21 @@ object Settings extends Dependencies {
       "-Xlint:stars-align",
       "-Xlint:type-parameter-shadow",
       "-Xlint:unsound-match"
+    ).filterNot(
+      (if (scalaVersion.value.startsWith("2.13")) Set(
+        // removed in 2.13.x
+        "-Yno-adapted-args",
+        "-Ypartial-unification",
+        "-Ywarn-inaccessible",
+        "-Ywarn-infer-any",
+        "-Ywarn-nullary-override",
+        "-Ywarn-nullary-unit",
+        "-Xlint:by-name-right-associative",
+        "-Xlint:unsound-match",
+        "-Xfuture",
+        // only for 2.11.x
+        "-Xexperimental"
+      ) else Set.empty[String]).contains _
     ),
     Compile / console / scalacOptions := Seq(
       // standard settings
