@@ -24,6 +24,7 @@ class Fetcher[Create, Entity: Read, Update, Names](val meta: NamedRepoMeta[Creat
 
     def withLimit(limit: Long): Fetch = copy(limit = Some(limit))
 
+    @SuppressWarnings(Array("org.wartremover.warts.StringPlusAny"))
     def apply(filter: Names => Filter): Query0[Entity] = {
       val orderBy = sort match {
         case Some((columnf, Sort.Ascending))  => fr"ORDER BY" ++ namedColForNames[Id](columnf).fragment ++ fr"ASC"

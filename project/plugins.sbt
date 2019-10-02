@@ -1,9 +1,8 @@
-addSbtPlugin("com.github.tkawachi" % "sbt-lock" % "0.6.0")
 addSbtPlugin("com.lucidchart" % "sbt-scalafmt" % "1.16")
 addSbtPlugin("com.typesafe.sbt" % "sbt-git" % "1.0.0")
-addSbtPlugin("org.wartremover" % "sbt-wartremover" % "2.4.2")
+addSbtPlugin("org.wartremover" % "sbt-wartremover" % "2.4.3")
 addSbtPlugin("org.scalastyle" %% "scalastyle-sbt-plugin" % "1.0.0")
-addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.6.0-RC2")
+addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.6.0")
 
 addSbtPlugin("com.lihaoyi" % "scalatex-sbt-plugin" % "0.3.11")
 addSbtPlugin("com.typesafe.sbt" % "sbt-ghpages" % "0.6.3")
