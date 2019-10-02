@@ -23,7 +23,7 @@ trait WithH2Database extends BeforeAfterAll with IOChecker { this: Specification
         "sa", // username
         "", // password
         ce, // await connection here
-        te // execute JDBC operations here
+        Blocker.liftExecutionContext(te) // execute JDBC operations here
       )
     } yield xa).allocated.unsafeRunSync()
 

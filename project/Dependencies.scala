@@ -6,14 +6,14 @@ object Dependencies {
 
   // scala version
   val scalaOrganization = "org.scala-lang"
-  val scalaVersion      = "2.12.9"
+  val scalaVersion      = "2.12.10"
 
   // build tools version
   val scalaFmtVersion = "1.5.1"
 
   // libraries versions
-  val doobieVersion   = "0.7.0"
-  val specs2Version   = "4.5.1"
+  val doobieVersion   = "0.8.4"
+  val specs2Version   = "4.7.1"
 
   // resolvers
   val resolvers = Seq(
@@ -27,7 +27,7 @@ object Dependencies {
   val doobieHikari       = "org.tpolecat"                 %% "doobie-hikari"             % doobieVersion
   val doobiePostgres     = "org.tpolecat"                 %% "doobie-postgres"           % doobieVersion
   val doobieSpecs2       = "org.tpolecat"                 %% "doobie-specs2"             % doobieVersion
-  val magnolia           = "com.propensive"               %% "magnolia"                  % "0.11.0"
+  val magnolia           = "com.propensive"               %% "magnolia"                  % "0.12.0"
   val shapeless          = "com.chuusai"                  %% "shapeless"                 % "2.3.3"
   val quicklens          = "com.softwaremill.quicklens"   %% "quicklens"                 % "1.4.12"
   // db

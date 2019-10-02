@@ -47,4 +47,3 @@ lazy val readme = scalatex.ScalatexReadme(
 
 addCommandAlias("fullTest", ";test;it:test;scalastyle")
 addCommandAlias("fullCoverageTest", ";coverage;test;it:test;coverageReport;coverageAggregate;scalastyle")
-addCommandAlias("relock", ";unlock;reload;update;lock")

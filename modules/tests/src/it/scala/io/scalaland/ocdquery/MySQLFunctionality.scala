@@ -1,6 +1,6 @@
 package io.scalaland.ocdquery
 
-import cats.effect.{ IO, Resource }
+import cats.effect.{ Blocker, IO, Resource }
 import doobie._
 import doobie.implicits._
 import doobie.hikari.HikariTransactor
@@ -20,7 +20,7 @@ final class MySQLFunctionality extends Specification with TestCommonFeatures {
         user            = "ocdquery",
         pass            = "password",
         connectEC       = ce,
-        transactEC      = te
+        blocker         = Blocker.liftExecutionContext(te)
       )
     } yield xa
 
